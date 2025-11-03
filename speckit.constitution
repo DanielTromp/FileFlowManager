@@ -1,0 +1,121 @@
+# Speckit Constitution: Automatic File Manager
+# Core principles, values, and immutable constraints for the project
+
+## Project Identity
+**Name:** FileFlow Manager
+**Purpose:** Intelligent, automated file organization system for macOS with extensible rule-based management
+**Philosophy:** "Organize automatically, control manually, extend infinitely"
+
+## Core Principles
+
+### 1. Data Safety First
+- NEVER delete files without explicit user confirmation or SHA-256 checksum verification
+- ALWAYS perform dry-run capability before actual operations
+- ALWAYS log all file operations with timestamps and checksums
+- NEVER overwrite files without checksum comparison
+- MAINTAIN operation rollback capability through detailed logging
+
+### 2. User Control & Transparency
+- User must be able to see what will happen before it happens (dry-run)
+- All rules must be visible and editable through GUI
+- Configuration must be human-readable and version-controllable
+- Every automatic action must be auditable through logs
+- User can disable any rule at any time
+
+### 3. Extensibility & Future-Proofing
+- Rule system must support unlimited custom rules
+- File type categories must be easily extensible
+- Folder mappings must be user-configurable
+- Architecture must allow adding new features without breaking existing ones
+- Configuration format must support schema evolution
+
+### 4. Cross-Device Compatibility
+- Support different screenshot locations (Desktop vs Downloads)
+- Detect system configuration automatically where possible
+- Allow manual override of detected settings
+- Configuration must be portable across devices
+
+### 5. Performance & Reliability
+- File operations must be atomic where possible
+- Large file scans must not block the GUI
+- Background operations must be cancellable
+- Memory footprint must remain reasonable (< 200MB)
+- Startup time must be under 3 seconds
+
+## Immutable Constraints
+
+### Technical Stack
+- **Backend:** Python 3.10+ (for file operations, logic)
+- **Frontend:** Tauri + Svelte (native performance, modern UI)
+- **IPC:** Tauri commands for Python-to-GUI communication
+- **Config Format:** TOML (human-readable, structured)
+- **Database:** SQLite (operation history, file index)
+- **CLI Framework:** Click or Typer
+
+### File Integrity Rules
+- SHA-256 for all duplicate detection (no MD5 or weak hashes)
+- Checksums must be cached to avoid recalculation
+- Original modification timestamps must be preserved
+- File permissions must be maintained during moves
+
+### Architecture Boundaries
+- GUI layer communicates with backend ONLY through defined API
+- Backend must be fully functional without GUI (CLI-first design)
+- Configuration changes must not require application restart
+- Each rule must be independently enable/disable-able
+
+### User Experience Mandates
+- No operation should take > 5 seconds without progress indicator
+- Error messages must be actionable (tell user what to do)
+- All destructive actions require confirmation or dry-run validation
+- GUI must be responsive even during heavy file operations
+
+## Non-Negotiable Features
+
+1. **Dry Run Mode:** Every operation must have a dry-run preview
+2. **Duplicate Detection:** SHA-256 checksum-based, not name-based
+3. **Date Organization:** Screenshots organized by YYYY/MM/DD structure
+4. **Rollback Logging:** All operations logged with enough detail to reverse
+5. **File Type Presets:** Preconfigured categories for common file types
+6. **Large File Detection:** Configurable threshold (default: 100MB)
+7. **Old File Detection:** Configurable age threshold (default: 90 days)
+8. **Multi-tab GUI:** Separate tabs for triggers, config, large files, old files
+9. **CLI Interface:** Full feature parity with GUI operations
+10. **Config File Export/Import:** Settings must be portable
+
+## Forbidden Patterns
+
+- ❌ No silent file deletion without checksum verification
+- ❌ No hardcoded file paths (except for macOS defaults as fallbacks)
+- ❌ No blocking operations on main GUI thread
+- ❌ No storing sensitive data in plain text
+- ❌ No modifying files in-place (only moves and deletes)
+- ❌ No ignoring file operation errors
+- ❌ No single-threaded sequential processing for large batches
+- ❌ No proprietary config formats
+- ❌ No tightly coupling rules to specific folder structures
+
+## Success Criteria
+
+The application succeeds if:
+1. A non-technical user can configure their first rule in < 2 minutes
+2. Processing 1000 files takes < 30 seconds on average hardware
+3. Zero data loss incidents in normal operation
+4. Configuration survives system crashes without corruption
+5. User can understand what happened by reading the log
+6. Adding a new file type category takes < 1 minute
+7. Application runs stable for 30+ days without restart
+
+## Evolution Guidelines
+
+When adding features, they must:
+- Maintain backward compatibility with existing configs
+- Follow the same pattern as existing features (consistency)
+- Include both GUI and CLI interfaces
+- Have comprehensive error handling
+- Be documented in user-facing help text
+- Include dry-run capability where applicable
+- Be independently toggleable
+
+---
+*This constitution defines the unchanging foundation. All specifications and implementations must align with these principles.*

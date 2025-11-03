@@ -1,0 +1,1162 @@
+# Speckit Plan: Automatic File Manager
+# Implementation roadmap with phases, tasks, and timelines
+
+## Project Overview
+
+**Project Name:** FileFlow Manager
+**Estimated Duration:** 6-8 weeks (part-time) or 3-4 weeks (full-time)
+**Tech Stack:**
+- Backend: Python 3.10+, FastAPI (optional for future web interface)
+- Frontend: Tauri 1.5+ with Svelte 4+
+- Database: SQLite 3
+- CLI: Typer
+- Build Tools: Poetry (Python), pnpm (Node.js)
+
+## Development Phases
+
+### Phase 0: Project Setup (Days 1-2)
+
+**Goal:** Initialize project structure and development environment
+
+#### Tasks:
+
+**0.1 Repository Setup**
+- [ ] Create Git repository
+- [ ] Initialize `.gitignore` for Python, Node, Tauri
+- [ ] Create initial `README.md` with project description
+- [ ] Set up branch strategy (main, develop, feature/*)
+
+**0.2 Python Backend Structure**
+```bash
+mkdir -p fileflow-manager/backend
+cd fileflow-manager/backend
+
+# Create project structure
+mkdir -p fileflow_core fileflow_config fileflow_storage fileflow_cli fileflow_api tests
+
+# Initialize Poetry project
+poetry init
+poetry add typer rich pydantic pyyaml toml
+poetry add --group dev pytest pytest-cov black ruff mypy
+
+# Create package structure
+touch fileflow_core/__init__.py
+touch fileflow_config/__init__.py
+touch fileflow_storage/__init__.py
+touch fileflow_cli/__init__.py
+touch fileflow_api/__init__.py
+```
+
+**0.3 Tauri Frontend Structure**
+```bash
+cd ../
+pnpm create tauri-app frontend
+
+# Select options:
+# - Framework: Svelte
+# - TypeScript: Yes
+# - Package Manager: pnpm
+
+cd frontend
+pnpm install
+pnpm add -D @sveltejs/adapter-static
+pnpm add @tauri-apps/api lucide-svelte
+```
+
+**0.4 Configuration Files**
+- [ ] Create `pyproject.toml` with project metadata
+- [ ] Create `pytest.ini` for test configuration
+- [ ] Create `.ruff.toml` for linting rules
+- [ ] Create `tsconfig.json` for TypeScript
+- [ ] Create example `fileflow.toml` configuration file
+
+**Deliverables:**
+- Working development environment
+- Project structure initialized
+- Dependencies installed
+
+---
+
+### Phase 1: Core Backend Foundation (Days 3-7)
+
+**Goal:** Implement core file operations and rule engine without GUI
+
+#### Module 1.1: Configuration Management (Day 3)
+
+**Files to Create:**
+- `fileflow_config/config_manager.py`
+- `fileflow_config/rule_schema.py`
+- `fileflow_config/defaults.py`
+- `tests/test_config.py`
+
+**Implementation Order:**
+1. Define Rule dataclass with validation
+2. Implement TOML parser with error handling
+3. Create default configuration generator
+4. Add environment variable expansion (${DOWNLOADS}, etc.)
+5. Implement config validation logic
+6. Write unit tests for all config operations
+
+**Test Cases:**
+```python
+def test_load_valid_config():
+    # Should load and parse correctly
+    
+def test_invalid_config_raises_error():
+    # Should raise ValidationError
+    
+def test_environment_variable_expansion():
+    # ${DOWNLOADS} → /Users/daniel/Downloads
+    
+def test_rule_priority_sorting():
+    # Rules should sort by priority
+```
+
+**Acceptance Criteria:**
+- [ ] Load TOML configuration successfully
+- [ ] Validate rule structure
+- [ ] Expand environment variables
+- [ ] Handle missing/invalid config gracefully
+- [ ] 100% test coverage
+
+#### Module 1.2: File Scanner (Day 4)
+
+**Files to Create:**
+- `fileflow_core/file_scanner.py`
+- `fileflow_core/models.py` (data classes)
+- `tests/test_file_scanner.py`
+
+**Implementation Order:**
+1. Define FileMetadata dataclass
+2. Implement glob pattern matching
+3. Create file property extraction (size, dates)
+4. Add recursive directory scanning
+5. Implement file filtering by size/age
+6. Add exclude pattern support
+7. Write comprehensive tests
+
+**Key Functions:**
+```python
+def scan_directory(
+    directory: str,
+    patterns: List[str],
+    exclude_patterns: List[str] = []
+) -> List[FileMetadata]:
+    """Scan directory for files matching patterns."""
+    
+def matches_rule(file_meta: FileMetadata, rule: Rule) -> bool:
+    """Check if file matches rule criteria."""
+    
+def find_matching_files(rule: Rule) -> List[FileMetadata]:
+    """Find all files matching a specific rule."""
+```
+
+**Acceptance Criteria:**
+- [ ] Scan directories recursively
+- [ ] Match glob patterns correctly
+- [ ] Filter by size and age
+- [ ] Handle permission errors gracefully
+- [ ] Performance: 1000 files in < 5 seconds
+
+#### Module 1.3: Checksum & Duplicate Detection (Day 5)
+
+**Files to Create:**
+- `fileflow_core/duplicate_detector.py`
+- `fileflow_storage/cache.py`
+- `tests/test_duplicate_detection.py`
+
+**Implementation Order:**
+1. Implement SHA-256 checksum calculation
+2. Add checksum caching to SQLite
+3. Create duplicate detection algorithm
+4. Implement cache invalidation logic
+5. Add progress reporting for large files
+6. Write performance tests
+
+**Key Functions:**
+```python
+def calculate_sha256(file_path: str) -> str:
+    """Calculate SHA-256 hash of file."""
+    
+def get_cached_checksum(file_path: str) -> Optional[str]:
+    """Get checksum from cache if valid."""
+    
+def find_duplicates(files: List[FileMetadata]) -> List[Tuple[str, str]]:
+    """Find duplicate files by checksum."""
+```
+
+**Acceptance Criteria:**
+- [ ] Calculate SHA-256 correctly
+- [ ] Cache checksums efficiently
+- [ ] Detect duplicates accurately
+- [ ] Handle cache invalidation
+- [ ] Performance: 100MB file in < 2 seconds
+
+#### Module 1.4: File Operations (Day 6)
+
+**Files to Create:**
+- `fileflow_core/file_operations.py`
+- `fileflow_core/date_organizer.py`
+- `tests/test_file_operations.py`
+
+**Implementation Order:**
+1. Implement safe file move with atomic operations
+2. Add file deletion with verification
+3. Create date-based path generation
+4. Implement destination directory creation
+5. Add rollback logging
+6. Handle name conflicts
+7. Write integration tests
+
+**Key Functions:**
+```python
+def move_file(source: str, destination: str, preserve_metadata: bool = True) -> bool:
+    """Move file safely with metadata preservation."""
+    
+def delete_file(file_path: str, verify_checksum: str) -> bool:
+    """Delete file after checksum verification."""
+    
+def get_date_based_path(file_path: str, template: str) -> str:
+    """Generate date-organized path."""
+```
+
+**Acceptance Criteria:**
+- [ ] Move files atomically
+- [ ] Preserve timestamps and permissions
+- [ ] Create destination directories
+- [ ] Handle name conflicts
+- [ ] Log all operations
+- [ ] Never lose data
+
+#### Module 1.5: Rule Execution Engine (Day 7)
+
+**Files to Create:**
+- `fileflow_core/rule_engine.py`
+- `tests/test_rule_engine.py`
+
+**Implementation Order:**
+1. Implement rule sorting by priority
+2. Create scan operation (dry-run mode)
+3. Implement execute operation
+4. Add progress reporting
+5. Create operation result tracking
+6. Write end-to-end tests
+
+**Key Functions:**
+```python
+def execute_rules(rules: List[Rule], dry_run: bool = True) -> ScanResult:
+    """Execute all rules and return operations."""
+    
+def execute_operation(operation: FileOperation) -> bool:
+    """Execute a single file operation."""
+```
+
+**Acceptance Criteria:**
+- [ ] Execute rules in priority order
+- [ ] Support dry-run mode
+- [ ] Track all operations
+- [ ] Handle errors gracefully
+- [ ] Process 100 files in < 3 seconds
+
+**Phase 1 Deliverables:**
+- Fully functional backend core
+- Comprehensive test coverage (>90%)
+- CLI prototype working
+- Documentation for core modules
+
+---
+
+### Phase 2: Database & CLI (Days 8-10)
+
+**Goal:** Implement SQLite storage and complete CLI interface
+
+#### Module 2.1: Database Layer (Day 8)
+
+**Files to Create:**
+- `fileflow_storage/database.py`
+- `fileflow_storage/migrations.py`
+- `tests/test_database.py`
+
+**Implementation Order:**
+1. Create SQLite schema
+2. Implement operation logging
+3. Add checksum cache table operations
+4. Create query functions for history
+5. Implement database migrations
+6. Add cleanup for old records
+7. Write database tests
+
+**Database Schema:**
+```sql
+-- See detailed schema in speckit.specify section 7
+```
+
+**Key Functions:**
+```python
+def log_operation(operation: FileOperation) -> None:
+    """Log operation to database."""
+    
+def get_operation_history(limit: int = 100) -> List[FileOperation]:
+    """Retrieve operation history."""
+    
+def get_cached_checksum(file_path: str) -> Optional[str]:
+    """Get checksum from cache."""
+```
+
+**Acceptance Criteria:**
+- [ ] Store operations reliably
+- [ ] Query history efficiently
+- [ ] Cache checksums correctly
+- [ ] Handle database corruption
+- [ ] Auto-cleanup old entries
+
+#### Module 2.2: Complete CLI (Days 9-10)
+
+**Files to Create:**
+- `fileflow_cli/commands.py`
+- `fileflow_cli/__main__.py`
+- `tests/test_cli.py`
+
+**Implementation Order:**
+1. Set up Typer CLI framework
+2. Implement `scan` command with dry-run/execute
+3. Implement `rules` subcommands (list, enable, disable, create)
+4. Implement `files` subcommands (large, old)
+5. Implement `config` subcommands (export, import)
+6. Implement `history` command
+7. Add rich formatting for output
+8. Write CLI integration tests
+
+**CLI Commands:**
+```bash
+fileflow scan --dry-run              # Preview changes
+fileflow scan --execute              # Execute scan
+fileflow scan --rule screenshots     # Run specific rule
+
+fileflow rules list                  # List all rules
+fileflow rules enable screenshots    # Enable rule
+fileflow rules disable documents     # Disable rule
+fileflow rules create --interactive  # Interactive rule creation
+
+fileflow files large --threshold 100 # Show large files
+fileflow files old --days 90         # Show old files
+
+fileflow history --limit 50          # Show operation history
+
+fileflow config export backup.toml   # Export config
+fileflow config import backup.toml   # Import config
+
+fileflow detect screenshots          # Detect screenshot location
+
+fileflow daemon --interval 30        # Run as daemon
+```
+
+**Output Formatting:**
+```
+Using rich library for:
+- Colored output
+- Progress bars
+- Tables for file lists
+- Syntax highlighting for configs
+```
+
+**Acceptance Criteria:**
+- [ ] All commands working
+- [ ] Beautiful terminal output
+- [ ] Progress indicators
+- [ ] Error messages clear
+- [ ] Help text comprehensive
+
+**Phase 2 Deliverables:**
+- SQLite database fully functional
+- Complete CLI with all features
+- CLI documentation
+- Integration tests passing
+
+---
+
+### Phase 3: GUI Frontend (Days 11-18)
+
+**Goal:** Build complete Tauri + Svelte GUI
+
+#### Module 3.1: Tauri Bridge & API (Days 11-12)
+
+**Files to Create:**
+- `backend/fileflow_api/tauri_commands.py`
+- `frontend/src-tauri/src/main.rs`
+- `frontend/src/lib/api.ts`
+- `frontend/src/lib/types.ts`
+
+**Implementation Order:**
+1. Set up Tauri command handlers in Rust
+2. Create Python subprocess/HTTP bridge
+3. Implement all Tauri commands (see speckit.specify 4.1)
+4. Create TypeScript API wrappers
+5. Define TypeScript interfaces for data models
+6. Add error handling in bridge
+7. Test all commands
+
+**Tauri Commands to Implement:**
+```rust
+// In src-tauri/src/main.rs
+#[tauri::command]
+async fn scan_files(dry_run: bool) -> Result<ScanResult, String>
+
+#[tauri::command]
+async fn execute_scan(operation_ids: Vec<String>) -> Result<ExecutionResult, String>
+
+#[tauri::command]
+async fn get_rules() -> Result<Vec<Rule>, String>
+
+// ... (all commands from specification)
+```
+
+**TypeScript API:**
+```typescript
+// In src/lib/api.ts
+export async function scanFiles(dryRun: boolean): Promise<ScanResult> {
+  return invoke('scan_files', { dryRun });
+}
+```
+
+**Acceptance Criteria:**
+- [ ] All Tauri commands working
+- [ ] TypeScript types defined
+- [ ] Error handling robust
+- [ ] Async operations smooth
+
+#### Module 3.2: UI Components (Days 13-14)
+
+**Files to Create:**
+- `frontend/src/lib/components/RuleEditor.svelte`
+- `frontend/src/lib/components/FileList.svelte`
+- `frontend/src/lib/components/ProgressBar.svelte`
+- `frontend/src/lib/components/ConfirmDialog.svelte`
+- `frontend/src/lib/components/RuleCard.svelte`
+
+**Implementation Order:**
+1. Create reusable component library
+2. Implement RuleEditor with form validation
+3. Create FileList with sorting/filtering
+4. Build ProgressBar for operations
+5. Add ConfirmDialog for destructive actions
+6. Style with Tailwind CSS or similar
+7. Test components in isolation
+
+**Component Specifications:**
+
+**RuleEditor.svelte:**
+```svelte
+<script lang="ts">
+  export let rule: Rule | null = null;  // null for new rule
+  export let onSave: (rule: Rule) => void;
+  export let onCancel: () => void;
+</script>
+
+<!-- Form with all rule fields -->
+```
+
+**Acceptance Criteria:**
+- [ ] Components reusable
+- [ ] Proper form validation
+- [ ] Accessible (keyboard navigation)
+- [ ] Responsive design
+- [ ] Consistent styling
+
+#### Module 3.3: Tab 1 - Dashboard (Day 15)
+
+**Files to Create:**
+- `frontend/src/routes/Dashboard.svelte`
+- `frontend/src/lib/stores/scan.ts` (Svelte store)
+
+**Implementation Order:**
+1. Create dashboard layout
+2. Add Dry Run button with modal preview
+3. Add Execute button with confirmation
+4. Display scan status and results
+5. Show active rules list
+6. Add real-time progress updates
+7. Test user workflows
+
+**Features:**
+- Large trigger buttons
+- Status indicators
+- Active rules summary
+- Last scan information
+- Add rule quick action
+
+**Acceptance Criteria:**
+- [ ] Dry run shows preview
+- [ ] Execute requires confirmation
+- [ ] Progress updates in real-time
+- [ ] Status always visible
+- [ ] Quick access to rules
+
+#### Module 3.4: Tab 2 - Rules Configuration (Day 16)
+
+**Files to Create:**
+- `frontend/src/routes/Rules.svelte`
+- `frontend/src/lib/stores/rules.ts`
+
+**Implementation Order:**
+1. Create rules list view
+2. Add rule cards with expand/collapse
+3. Implement rule editor dialog
+4. Add enable/disable toggle
+5. Implement rule creation
+6. Add rule deletion with confirmation
+7. Add rule search/filter
+8. Test all CRUD operations
+
+**Features:**
+- Expandable rule cards
+- Inline editing
+- Priority indicators
+- Quick enable/disable
+- Search and filter
+- Drag-and-drop reordering (future enhancement)
+
+**Acceptance Criteria:**
+- [ ] View all rules
+- [ ] Edit rules easily
+- [ ] Create new rules
+- [ ] Delete rules safely
+- [ ] Filter and search working
+
+#### Module 3.5: Tab 3 - Large Files (Day 17)
+
+**Files to Create:**
+- `frontend/src/routes/LargeFiles.svelte`
+- `frontend/src/lib/stores/files.ts`
+
+**Implementation Order:**
+1. Create file list view
+2. Add threshold configuration
+3. Implement sorting (size, date, name)
+4. Add filtering by location
+5. Implement multi-select
+6. Add delete with confirmation
+7. Show storage space to be freed
+8. Test with large datasets
+
+**Features:**
+- Sortable columns
+- Filter by location
+- Multi-select checkboxes
+- Bulk delete
+- Size visualization
+- Space saved calculation
+
+**Acceptance Criteria:**
+- [ ] List large files accurately
+- [ ] Sort and filter working
+- [ ] Multi-select functional
+- [ ] Delete confirmation clear
+- [ ] Performance good (1000+ files)
+
+#### Module 3.6: Tab 4 - Old Files (Day 18)
+
+**Files to Create:**
+- `frontend/src/routes/OldFiles.svelte`
+
+**Implementation Order:**
+1. Create old files view (similar to large files)
+2. Add age threshold configuration
+3. Implement sorting by age
+4. Add filtering by file type
+5. Implement multi-select and delete
+6. Show age indicators (e.g., "95 days old")
+7. Test with various file ages
+
+**Features:**
+- Age-based sorting
+- File type filters
+- Visual age indicators
+- Bulk operations
+- Clear date information
+
+**Acceptance Criteria:**
+- [ ] List old files accurately
+- [ ] Threshold configurable
+- [ ] Sorting and filtering work
+- [ ] Safe deletion
+- [ ] Age clearly displayed
+
+**Phase 3 Deliverables:**
+- Complete GUI with all tabs
+- Tauri-Python bridge working
+- All features accessible via GUI
+- Responsive and polished UI
+
+---
+
+### Phase 4: Integration & Polish (Days 19-22)
+
+**Goal:** Connect everything, add advanced features, polish UX
+
+#### Module 4.1: Screenshot Location Detection (Day 19)
+
+**Files to Create:**
+- `fileflow_core/system_detection.py`
+- `tests/test_system_detection.py`
+
+**Implementation Order:**
+1. Implement macOS defaults read
+2. Add fallback to Desktop
+3. Test on different macOS versions
+4. Add detection to GUI settings
+5. Allow manual override
+6. Show detection results in UI
+
+**Implementation:**
+```python
+def detect_screenshot_location() -> str:
+    """Detect macOS screenshot save location."""
+    try:
+        result = subprocess.run(
+            ["defaults", "read", "com.apple.screencapture", "location"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError:
+        # Fallback to Desktop
+        return str(Path.home() / "Desktop")
+```
+
+**Acceptance Criteria:**
+- [ ] Detect correctly on macOS
+- [ ] Fallback to Desktop works
+- [ ] User can override
+- [ ] Detection runs on app start
+
+#### Module 4.2: Notifications & Status (Day 20)
+
+**Files to Create:**
+- `frontend/src/lib/notifications.ts`
+- `backend/fileflow_api/notifications.py`
+
+**Implementation Order:**
+1. Add macOS notification support
+2. Implement operation completion notifications
+3. Add error notifications
+4. Create in-app notification system
+5. Add notification preferences
+6. Test notification timing
+
+**Features:**
+- System notifications (optional)
+- In-app toast notifications
+- Error alerts
+- Success confirmations
+- Notification history
+
+**Acceptance Criteria:**
+- [ ] Notifications appear correctly
+- [ ] User can disable them
+- [ ] Errors always notify
+- [ ] Non-intrusive design
+
+#### Module 4.3: Settings & Preferences (Day 21)
+
+**Files to Create:**
+- `frontend/src/routes/Settings.svelte`
+- `frontend/src/lib/stores/settings.ts`
+
+**Implementation Order:**
+1. Create settings dialog/page
+2. Add general preferences
+3. Add path configurations
+4. Add threshold settings
+5. Add notification preferences
+6. Implement config export/import UI
+7. Add about/version info
+
+**Settings Sections:**
+- General (auto-run, interval)
+- Paths (screenshot location, downloads)
+- Thresholds (large files, old files)
+- Notifications (enable/disable)
+- Advanced (log level, cache)
+
+**Acceptance Criteria:**
+- [ ] All settings configurable
+- [ ] Changes saved immediately
+- [ ] Export/import working
+- [ ] Settings validated
+
+#### Module 4.4: Error Handling & Recovery (Day 22)
+
+**Files to Create:**
+- `backend/fileflow_core/error_handler.py`
+- `frontend/src/lib/errorHandler.ts`
+
+**Implementation Order:**
+1. Implement comprehensive error catching
+2. Add user-friendly error messages
+3. Create error recovery suggestions
+4. Add error logging
+5. Implement retry logic
+6. Add error report generation
+7. Test error scenarios
+
+**Error Scenarios to Handle:**
+- Permission denied
+- Disk space full
+- File not found
+- Network issues (if future features)
+- Corrupted database
+- Invalid configuration
+
+**Acceptance Criteria:**
+- [ ] All errors caught
+- [ ] Messages actionable
+- [ ] Recovery options clear
+- [ ] Logs comprehensive
+
+**Phase 4 Deliverables:**
+- Screenshot detection working
+- Notifications implemented
+- Settings fully functional
+- Robust error handling
+
+---
+
+### Phase 5: Testing & Documentation (Days 23-26)
+
+**Goal:** Comprehensive testing and documentation
+
+#### 5.1 Testing (Days 23-24)
+
+**Test Categories:**
+
+**Unit Tests:**
+- [ ] All Python modules (>90% coverage)
+- [ ] Configuration parsing
+- [ ] File operations
+- [ ] Duplicate detection
+- [ ] Rule engine
+
+**Integration Tests:**
+- [ ] Backend → Database
+- [ ] CLI commands end-to-end
+- [ ] GUI → Backend communication
+- [ ] Multi-rule scenarios
+- [ ] Error recovery
+
+**User Acceptance Tests:**
+- [ ] New user onboarding
+- [ ] Rule creation workflow
+- [ ] Dry run → Execute workflow
+- [ ] Large file management
+- [ ] Old file management
+- [ ] Configuration export/import
+
+**Performance Tests:**
+- [ ] 1000 files in 5 seconds
+- [ ] 100MB file checksum in 2 seconds
+- [ ] GUI responsive with 10,000 files
+- [ ] Memory usage < 200MB
+
+**Edge Case Tests:**
+- [ ] Empty directories
+- [ ] Special characters in filenames
+- [ ] Symlinks
+- [ ] Hidden files
+- [ ] Permission errors
+- [ ] Disk space errors
+
+#### 5.2 Documentation (Days 25-26)
+
+**Documentation to Create:**
+
+**User Documentation:**
+- [ ] `README.md` - Overview, installation, quick start
+- [ ] `USAGE.md` - Detailed usage guide
+- [ ] `FAQ.md` - Common questions and solutions
+- [ ] `TROUBLESHOOTING.md` - Error solutions
+- [ ] In-app help system
+
+**Developer Documentation:**
+- [ ] `CONTRIBUTING.md` - How to contribute
+- [ ] `ARCHITECTURE.md` - System design
+- [ ] `API.md` - Backend API reference
+- [ ] Code comments and docstrings
+- [ ] `CHANGELOG.md` - Version history
+
+**Screenshots:**
+- [ ] Dashboard view
+- [ ] Rules configuration
+- [ ] Large files tab
+- [ ] Settings dialog
+- [ ] Dry run preview
+
+**Video Tutorial (Optional):**
+- [ ] 5-minute quick start guide
+- [ ] Rule creation walkthrough
+
+**Phase 5 Deliverables:**
+- Comprehensive test suite
+- All documentation complete
+- Known issues documented
+- Release notes prepared
+
+---
+
+### Phase 6: Build & Distribution (Days 27-28)
+
+**Goal:** Create distributable application
+
+#### 6.1 Build Configuration (Day 27)
+
+**Tasks:**
+- [ ] Configure Tauri build settings
+- [ ] Set up app signing (macOS)
+- [ ] Create app icon and assets
+- [ ] Configure auto-updater (optional)
+- [ ] Set up version management
+- [ ] Create build scripts
+
+**Files to Configure:**
+- `frontend/src-tauri/tauri.conf.json`
+- `frontend/src-tauri/icons/` (app icons)
+- Build automation scripts
+
+**Build Targets:**
+- macOS .app bundle
+- DMG installer
+- Future: Windows .exe, Linux .deb
+
+#### 6.2 Distribution (Day 28)
+
+**Tasks:**
+- [ ] Create GitHub releases
+- [ ] Set up homebrew tap (optional)
+- [ ] Create installation instructions
+- [ ] Set up analytics (optional, privacy-respecting)
+- [ ] Create website/landing page (optional)
+- [ ] Submit to Mac App Store (optional)
+
+**Release Checklist:**
+- [ ] Version number set
+- [ ] Changelog updated
+- [ ] All tests passing
+- [ ] Documentation complete
+- [ ] Build successful
+- [ ] Code signed
+- [ ] Release notes written
+
+**Phase 6 Deliverables:**
+- Distributable application
+- Installation instructions
+- Release published
+
+---
+
+## Development Best Practices
+
+### Code Quality
+
+**Python:**
+- Use type hints everywhere
+- Follow PEP 8 style guide
+- Use Black for formatting
+- Use Ruff for linting
+- Docstrings for all public functions
+
+**TypeScript/Svelte:**
+- Strict TypeScript mode
+- ESLint + Prettier
+- Component documentation
+- Prop validation
+
+**Git Workflow:**
+```bash
+# Feature branch workflow
+git checkout -b feature/rule-editor
+# Make changes
+git commit -m "feat: add rule editor component"
+git push origin feature/rule-editor
+# Create PR to develop
+# Merge to main for releases
+```
+
+**Commit Message Convention:**
+```
+feat: add screenshot detection
+fix: resolve duplicate checksum bug
+docs: update CLI usage guide
+test: add integration tests for rule engine
+refactor: simplify file operations logic
+```
+
+### Testing Strategy
+
+**Test Pyramid:**
+- 70% Unit tests (fast, isolated)
+- 20% Integration tests (component interaction)
+- 10% E2E tests (full user workflows)
+
+**Test Coverage Target:**
+- Minimum: 80%
+- Goal: 90%+
+- Critical paths: 100%
+
+**Continuous Testing:**
+```bash
+# Run tests on every commit
+pytest --cov=fileflow_core --cov-report=html
+
+# Run in watch mode during development
+pytest-watch
+```
+
+### Documentation Standards
+
+**Code Documentation:**
+```python
+def calculate_sha256(file_path: str, chunk_size: int = 8192) -> str:
+    """
+    Calculate SHA-256 checksum of a file.
+    
+    Reads file in chunks to handle large files efficiently without
+    loading entire file into memory.
+    
+    Args:
+        file_path: Absolute path to the file
+        chunk_size: Size of chunks to read in bytes (default: 8192)
+        
+    Returns:
+        Hexadecimal string representation of SHA-256 hash
+        
+    Raises:
+        FileNotFoundError: If file doesn't exist
+        PermissionError: If file can't be read
+        
+    Example:
+        >>> checksum = calculate_sha256("/path/to/file.txt")
+        >>> print(checksum)
+        'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+    """
+```
+
+**User Documentation:**
+- Start with quick start
+- Include screenshots
+- Provide examples
+- Link to related topics
+- Keep language simple
+
+---
+
+## Milestones & Checkpoints
+
+### Milestone 1: Backend Complete (End of Day 10)
+**Deliverables:**
+- Core engine functional
+- CLI working
+- Database operational
+- Tests passing (>90% coverage)
+
+**Demo:** Run CLI commands to organize files
+
+---
+
+### Milestone 2: GUI Alpha (End of Day 18)
+**Deliverables:**
+- All GUI tabs functional
+- Tauri bridge working
+- Basic features complete
+
+**Demo:** Show GUI organizing files with dry run
+
+---
+
+### Milestone 3: Feature Complete (End of Day 22)
+**Deliverables:**
+- All features implemented
+- Error handling robust
+- Settings configurable
+
+**Demo:** Full user workflow from setup to execution
+
+---
+
+### Milestone 4: Production Ready (End of Day 28)
+**Deliverables:**
+- Tests comprehensive
+- Documentation complete
+- Build distributable
+- Ready for users
+
+**Demo:** Install and use application end-to-end
+
+---
+
+## Risk Mitigation
+
+### Technical Risks
+
+**Risk:** Tauri-Python communication issues
+**Mitigation:** 
+- Test bridge early (Phase 3.1)
+- Consider alternative IPC methods
+- Have fallback to HTTP API
+
+**Risk:** Performance issues with large file sets
+**Mitigation:**
+- Implement pagination
+- Use background threads
+- Add performance benchmarks early
+- Optimize hot paths
+
+**Risk:** Data loss during file operations
+**Mitigation:**
+- Comprehensive testing
+- Always use dry run first
+- Log all operations
+- Implement rollback capability
+
+### Scope Risks
+
+**Risk:** Feature creep
+**Mitigation:**
+- Stick to specification
+- Document "future enhancements" separately
+- Focus on core features first
+- User feedback after MVP
+
+**Risk:** Timeline slippage
+**Mitigation:**
+- Break into small tasks
+- Track progress daily
+- Cut non-essential features if needed
+- Maintain scope discipline
+
+---
+
+## Launch Plan
+
+### Beta Testing (Week 6)
+
+**Target Users:**
+- 5-10 beta testers
+- Mix of technical and non-technical
+- Different macOS versions
+
+**Beta Goals:**
+- Find critical bugs
+- Validate user workflows
+- Gather feedback on UX
+- Test on different systems
+
+### Launch (Week 7-8)
+
+**Soft Launch:**
+- Release on GitHub
+- Post in relevant communities
+- Gather initial feedback
+- Fix critical issues
+
+**Public Launch:**
+- Create launch announcement
+- Update documentation
+- Monitor for issues
+- Plan next version
+
+---
+
+## Future Enhancements (Post-Launch)
+
+### Version 1.1 Features:
+- [ ] Automatic background scanning (daemon mode)
+- [ ] Cloud storage integration (Dropbox, Google Drive)
+- [ ] Advanced rule conditions (regex patterns)
+- [ ] Rule templates marketplace
+- [ ] Undo/rollback functionality
+- [ ] File preview in GUI
+- [ ] Batch rule import/export
+
+### Version 1.2 Features:
+- [ ] Machine learning for auto-categorization
+- [ ] Smart duplicate detection (similar images)
+- [ ] Network location support
+- [ ] Team/shared configurations
+- [ ] Advanced statistics and insights
+- [ ] Integration with Photos.app
+
+### Version 2.0 Features:
+- [ ] Windows and Linux support
+- [ ] Web-based remote management
+- [ ] Mobile companion app
+- [ ] API for third-party integrations
+- [ ] Plugin system for extensibility
+
+---
+
+## Success Metrics
+
+### Development Metrics:
+- Code coverage > 90%
+- Build time < 5 minutes
+- Test suite runs < 30 seconds
+- Zero critical bugs at launch
+
+### User Metrics (Post-Launch):
+- First rule created in < 2 minutes
+- User satisfaction > 4/5 stars
+- Crash rate < 0.1%
+- Active users after 30 days > 70%
+
+### Performance Metrics:
+- 1000 files processed in < 5 seconds
+- Memory usage < 200MB
+- App startup < 3 seconds
+- GUI always responsive
+
+---
+
+## Resources Needed
+
+### Development Tools:
+- macOS development machine
+- Python 3.10+
+- Node.js 18+
+- Rust toolchain
+- Git
+- Code editor (VS Code recommended)
+
+### Design Tools:
+- Figma (for UI mockups)
+- Icon design tool
+- Screenshot tool
+
+### Testing Devices:
+- macOS 12+ (Monterey or later)
+- Various file sizes for testing
+- Test data sets
+
+### Documentation Tools:
+- Markdown editor
+- Screen recording software
+- Diagram tool (draw.io, Excalidraw)
+
+---
+
+## Conclusion
+
+This plan provides a comprehensive roadmap for building FileFlow Manager from start to finish. Follow the phases sequentially, complete each module's acceptance criteria before moving on, and maintain high code quality throughout.
+
+**Key Success Factors:**
+1. Start with solid backend foundation
+2. Test continuously
+3. Keep user experience simple
+4. Document as you build
+5. Iterate based on feedback
+
+**Ready to start? Begin with Phase 0: Project Setup!**
+
+---
+
+*This plan is a living document. Update as you progress and learn.*

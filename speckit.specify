@@ -1,0 +1,938 @@
+# Speckit Specify: Automatic File Manager
+# Detailed specifications for implementation
+
+## 1. Application Architecture
+
+### 1.1 Component Structure
+```
+FileFlow Manager
+├── Backend (Python)
+│   ├── Core Engine (fileflow_core)
+│   │   ├── rule_engine.py      # Rule processing logic
+│   │   ├── file_scanner.py     # File discovery and indexing
+│   │   ├── file_operations.py  # Move, delete, checksum operations
+│   │   ├── duplicate_detector.py # SHA-256 based duplicate detection
+│   │   └── date_organizer.py   # Date-based folder organization
+│   ├── Configuration (fileflow_config)
+│   │   ├── config_manager.py   # TOML config read/write
+│   │   ├── rule_schema.py      # Rule validation and schema
+│   │   └── defaults.py         # Default rules and presets
+│   ├── Storage (fileflow_storage)
+│   │   ├── database.py         # SQLite operations history
+│   │   └── cache.py            # Checksum cache
+│   ├── CLI (fileflow_cli)
+│   │   └── commands.py         # Typer CLI commands
+│   └── API (fileflow_api)
+│       └── tauri_commands.py   # Tauri IPC endpoints
+├── Frontend (Tauri + Svelte)
+│   ├── src/
+│   │   ├── routes/
+│   │   │   ├── Dashboard.svelte    # Tab 1: Triggers & status
+│   │   │   ├── Rules.svelte        # Tab 2: Rule configuration
+│   │   │   ├── LargeFiles.svelte   # Tab 3: Large file management
+│   │   │   └── OldFiles.svelte     # Tab 4: Old file management
+│   │   ├── components/
+│   │   │   ├── RuleEditor.svelte   # Rule creation/edit component
+│   │   │   ├── FileList.svelte     # File listing with actions
+│   │   │   └── ProgressBar.svelte  # Operation progress
+│   │   └── lib/
+│   │       ├── api.ts              # Tauri command wrappers
+│   │       └── types.ts            # TypeScript interfaces
+│   └── src-tauri/
+│       └── src/main.rs             # Tauri bridge to Python
+└── Configuration
+    ├── fileflow.toml               # User configuration file
+    └── fileflow.db                 # SQLite operation history
+```
+
+### 1.2 Communication Flow
+```
+User Interaction → GUI (Svelte)
+                    ↓ (Tauri IPC)
+                  Rust Bridge
+                    ↓ (subprocess/HTTP)
+                  Python Backend
+                    ↓
+                  File System
+```
+
+## 2. Configuration Schema
+
+### 2.1 Main Configuration File (fileflow.toml)
+
+```toml
+[general]
+version = "1.0.0"
+auto_run_enabled = false
+auto_run_interval_minutes = 30
+log_level = "INFO"
+log_retention_days = 90
+checksum_cache_enabled = true
+
+[paths]
+screenshot_source = "auto"  # "auto", "desktop", "downloads", or custom path
+screenshot_destination = "${DOWNLOADS}/screenshots"
+default_downloads = "${DOWNLOADS}"
+
+[detection]
+large_file_threshold_mb = 100
+old_file_threshold_days = 90
+
+[rules.screenshots]
+enabled = true
+name = "Screenshot Organization"
+description = "Organize screenshots by date into Downloads/screenshots"
+source_patterns = ["Screenshot*.png", "Screen Shot*.png"]
+source_directories = ["${DESKTOP}", "${DOWNLOADS}"]
+destination = "${DOWNLOADS}/screenshots/{year}/{month}/{day}"
+organize_by_date = true
+file_types = [".png"]
+priority = 1
+
+[rules.documents]
+enabled = false
+name = "Document Organization"
+description = "Organize documents into Downloads/documents"
+source_patterns = ["*.pdf", "*.doc", "*.docx", "*.txt", "*.rtf"]
+source_directories = ["${DOWNLOADS}"]
+destination = "${DOWNLOADS}/documents"
+organize_by_date = false
+file_types = [".pdf", ".doc", ".docx", ".txt", ".rtf"]
+priority = 10
+
+[rules.images]
+enabled = false
+name = "Image Organization"
+description = "Organize images into Downloads/images"
+source_patterns = ["*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp", "*.heic"]
+source_directories = ["${DOWNLOADS}"]
+destination = "${DOWNLOADS}/images"
+organize_by_date = false
+file_types = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic"]
+priority = 20
+exclude_patterns = ["Screenshot*", "Screen Shot*"]
+
+[rules.videos]
+enabled = false
+name = "Video Organization"
+description = "Organize videos into Downloads/videos"
+source_patterns = ["*.mp4", "*.mov", "*.avi", "*.mkv", "*.webm"]
+source_directories = ["${DOWNLOADS}"]
+destination = "${DOWNLOADS}/videos"
+organize_by_date = false
+file_types = [".mp4", ".mov", ".avi", ".mkv", ".webm"]
+priority = 20
+
+[rules.archives]
+enabled = false
+name = "Archive Organization"
+description = "Organize archives into Downloads/archives"
+source_patterns = ["*.zip", "*.rar", "*.7z", "*.tar", "*.gz"]
+source_directories = ["${DOWNLOADS}"]
+destination = "${DOWNLOADS}/archives"
+organize_by_date = false
+file_types = [".zip", ".rar", ".7z", ".tar", ".gz"]
+priority = 20
+
+[rules.3d_printing]
+enabled = false
+name = "3D Printing Files"
+description = "Organize 3D printing files into Downloads/3d-printing"
+source_patterns = ["*.stl", "*.obj", "*.gcode", "*.3mf", "*.amf"]
+source_directories = ["${DOWNLOADS}"]
+destination = "${DOWNLOADS}/3d-printing"
+organize_by_date = false
+file_types = [".stl", ".obj", ".gcode", ".3mf", ".amf"]
+priority = 15
+
+[rules.code]
+enabled = false
+name = "Code Files"
+description = "Organize code files into Downloads/code"
+source_patterns = ["*.py", "*.js", "*.ts", "*.java", "*.cpp", "*.c", "*.h"]
+source_directories = ["${DOWNLOADS}"]
+destination = "${DOWNLOADS}/code"
+organize_by_date = false
+file_types = [".py", ".js", ".ts", ".java", ".cpp", ".c", ".h"]
+priority = 20
+
+[rules.audio]
+enabled = false
+name = "Audio Organization"
+description = "Organize audio files into Downloads/audio"
+source_patterns = ["*.mp3", "*.wav", "*.flac", "*.m4a", "*.aac"]
+source_directories = ["${DOWNLOADS}"]
+destination = "${DOWNLOADS}/audio"
+organize_by_date = false
+file_types = [".mp3", ".wav", ".flac", ".m4a", ".aac"]
+priority = 20
+
+[duplicate_handling]
+check_by_checksum = true
+delete_duplicates_with_same_checksum = true
+skip_duplicates_with_different_content = true
+log_all_duplicates = true
+
+[notifications]
+show_completion_notification = true
+show_error_notification = true
+show_duplicate_found_notification = false
+```
+
+### 2.2 Environment Variables
+- `${DESKTOP}` → `~/Desktop`
+- `${DOWNLOADS}` → `~/Downloads`
+- `${DOCUMENTS}` → `~/Documents`
+- `${HOME}` → `~`
+
+## 3. Data Models
+
+### 3.1 Rule Definition
+```python
+@dataclass
+class Rule:
+    id: str                          # Unique identifier (e.g., "screenshots")
+    enabled: bool                    # Is rule active?
+    name: str                        # Display name
+    description: str                 # User-facing description
+    source_patterns: List[str]       # Glob patterns (e.g., "Screenshot*.png")
+    source_directories: List[str]    # Where to scan
+    destination: str                 # Target directory (supports templates)
+    organize_by_date: bool           # Create date-based subdirectories?
+    file_types: List[str]            # Extensions to match
+    priority: int                    # Execution order (lower = first)
+    exclude_patterns: List[str] = [] # Patterns to exclude
+    min_size_kb: Optional[int] = None
+    max_size_kb: Optional[int] = None
+    min_age_days: Optional[int] = None
+    max_age_days: Optional[int] = None
+```
+
+### 3.2 File Operation Record
+```python
+@dataclass
+class FileOperation:
+    id: str                      # UUID
+    timestamp: datetime          # When operation occurred
+    operation_type: str          # "move", "delete", "skip"
+    source_path: str             # Original file path
+    destination_path: str        # Target path (if moved)
+    file_size: int               # Bytes
+    checksum: str                # SHA-256 hash
+    rule_id: str                 # Which rule triggered this
+    dry_run: bool                # Was this a dry run?
+    success: bool                # Did operation succeed?
+    error_message: Optional[str] # Error if failed
+    duplicate_of: Optional[str]  # If duplicate, original file ID
+```
+
+### 3.3 File Metadata
+```python
+@dataclass
+class FileMetadata:
+    path: str                    # Full file path
+    filename: str                # File name with extension
+    extension: str               # File extension
+    size_bytes: int              # File size
+    created_at: datetime         # Creation time
+    modified_at: datetime        # Last modification time
+    checksum: Optional[str]      # SHA-256 (lazy loaded)
+    matched_rules: List[str]     # Rules that match this file
+```
+
+### 3.4 Scan Result
+```python
+@dataclass
+class ScanResult:
+    total_files: int             # Total files scanned
+    matched_files: int           # Files matching rules
+    large_files: List[FileMetadata]      # Files > threshold
+    old_files: List[FileMetadata]        # Files older than threshold
+    duplicates: List[Tuple[FileMetadata, FileMetadata]]  # Duplicate pairs
+    operations: List[FileOperation]      # Planned operations
+    estimated_space_freed_mb: float      # Space that will be freed
+```
+
+## 4. API Specifications
+
+### 4.1 Tauri Commands (Python Backend → GUI)
+
+#### Scan Operations
+```python
+@tauri_command
+async def scan_files(dry_run: bool = True) -> ScanResult:
+    """
+    Scan all source directories according to active rules.
+    Returns what would happen without executing (if dry_run=True).
+    """
+    pass
+
+@tauri_command
+async def execute_scan(operation_ids: List[str]) -> ExecutionResult:
+    """
+    Execute specific operations from a scan result.
+    Must be called after scan_files() to actually move/delete files.
+    """
+    pass
+```
+
+#### Rule Management
+```python
+@tauri_command
+async def get_rules() -> List[Rule]:
+    """Get all configured rules."""
+    pass
+
+@tauri_command
+async def update_rule(rule_id: str, rule_data: dict) -> Rule:
+    """Update an existing rule."""
+    pass
+
+@tauri_command
+async def create_rule(rule_data: dict) -> Rule:
+    """Create a new rule."""
+    pass
+
+@tauri_command
+async def delete_rule(rule_id: str) -> bool:
+    """Delete a rule."""
+    pass
+
+@tauri_command
+async def toggle_rule(rule_id: str, enabled: bool) -> bool:
+    """Enable or disable a rule."""
+    pass
+```
+
+#### Configuration
+```python
+@tauri_command
+async def get_config() -> dict:
+    """Get current configuration."""
+    pass
+
+@tauri_command
+async def update_config(config_data: dict) -> dict:
+    """Update configuration."""
+    pass
+
+@tauri_command
+async def detect_screenshot_location() -> str:
+    """Auto-detect where screenshots are saved on this system."""
+    pass
+
+@tauri_command
+async def export_config(file_path: str) -> bool:
+    """Export configuration to a file."""
+    pass
+
+@tauri_command
+async def import_config(file_path: str) -> bool:
+    """Import configuration from a file."""
+    pass
+```
+
+#### File Management
+```python
+@tauri_command
+async def get_large_files(threshold_mb: int = 100) -> List[FileMetadata]:
+    """Get list of large files across monitored directories."""
+    pass
+
+@tauri_command
+async def get_old_files(threshold_days: int = 90) -> List[FileMetadata]:
+    """Get list of old files across monitored directories."""
+    pass
+
+@tauri_command
+async def delete_files(file_paths: List[str]) -> DeleteResult:
+    """Delete specified files (with confirmation)."""
+    pass
+
+@tauri_command
+async def get_operation_history(limit: int = 100) -> List[FileOperation]:
+    """Get recent operation history from database."""
+    pass
+```
+
+#### System
+```python
+@tauri_command
+async def get_app_status() -> dict:
+    """Get application status (version, db size, cache size, etc.)."""
+    pass
+
+@tauri_command
+async def clear_cache() -> bool:
+    """Clear checksum cache."""
+    pass
+```
+
+### 4.2 CLI Commands
+
+```bash
+# Scan and show what would happen
+fileflow scan --dry-run
+
+# Execute scan and organize files
+fileflow scan --execute
+
+# Execute specific rule only
+fileflow scan --rule screenshots --execute
+
+# List all rules
+fileflow rules list
+
+# Enable/disable a rule
+fileflow rules enable screenshots
+fileflow rules disable documents
+
+# Show large files
+fileflow files large --threshold 100
+
+# Show old files
+fileflow files old --days 90
+
+# Show operation history
+fileflow history --limit 50
+
+# Export configuration
+fileflow config export ~/fileflow-backup.toml
+
+# Import configuration
+fileflow config import ~/fileflow-backup.toml
+
+# Auto-detect screenshot location
+fileflow detect screenshots
+
+# Interactive mode for creating new rule
+fileflow rules create --interactive
+
+# Run as daemon (check every N minutes)
+fileflow daemon --interval 30
+```
+
+## 5. GUI Specifications
+
+### 5.1 Tab 1: Dashboard (Triggers & Status)
+
+**Layout:**
+```
+┌─────────────────────────────────────────────────────────┐
+│  FileFlow Manager                           [⚙️ Settings]│
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  ┌────────────────┐  ┌────────────────┐                │
+│  │   🔍 Dry Run   │  │  ▶️  Execute    │                │
+│  │                │  │                 │                │
+│  │   Preview      │  │   Organize     │                │
+│  │   Changes      │  │   Files Now    │                │
+│  └────────────────┘  └────────────────┘                │
+│                                                          │
+│  Last Scan: Never                                       │
+│  Active Rules: 1 / 8                                    │
+│                                                          │
+│  ───────────────────────────────────────────────────   │
+│                                                          │
+│  📋 Active Rules                                        │
+│                                                          │
+│  ✅ Screenshot Organization                    Priority 1│
+│     Screenshots → Downloads/screenshots/YYYY/MM/DD      │
+│     Source: Desktop, Downloads                          │
+│                                                          │
+│  ⏸️  Document Organization (Disabled)          Priority 10│
+│     Documents → Downloads/documents                     │
+│                                                          │
+│  [+ Add New Rule]                                       │
+│                                                          │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Components:**
+- **Dry Run Button**: Scans and shows preview of changes
+- **Execute Button**: Performs actual file operations
+- **Status Display**: Last scan time, active rules count
+- **Active Rules List**: Shows enabled rules with quick info
+- **Add Rule Button**: Opens rule creation dialog
+
+### 5.2 Tab 2: Rules Configuration
+
+**Layout:**
+```
+┌─────────────────────────────────────────────────────────┐
+│  Rules Configuration                         [+ New Rule]│
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  Search Rules: [____________]  Filter: [All ▼]          │
+│                                                          │
+│  ╔══════════════════════════════════════════════════╗  │
+│  ║ 📸 Screenshot Organization              [Toggle] ║  │
+│  ╠══════════════════════════════════════════════════╣  │
+│  ║ Status: ✅ Enabled                    Priority: 1 ║  │
+│  ║                                                   ║  │
+│  ║ Source Patterns:                                  ║  │
+│  ║   Screenshot*.png, Screen Shot*.png               ║  │
+│  ║                                                   ║  │
+│  ║ Source Directories:                               ║  │
+│  ║   • ~/Desktop                                     ║  │
+│  ║   • ~/Downloads                                   ║  │
+│  ║                                                   ║  │
+│  ║ Destination:                                      ║  │
+│  ║   ~/Downloads/screenshots/{year}/{month}/{day}    ║  │
+│  ║                                                   ║  │
+│  ║ Options:                                          ║  │
+│  ║   ☑️  Organize by date                            ║  │
+│  ║   ☑️  Check for duplicates                        ║  │
+│  ║                                                   ║  │
+│  ║ [Edit Rule]  [Duplicate]  [Delete]                ║  │
+│  ╚══════════════════════════════════════════════════╝  │
+│                                                          │
+│  ╔══════════════════════════════════════════════════╗  │
+│  ║ 📄 Document Organization             [Toggle] ⏸️  ║  │
+│  ╠══════════════════════════════════════════════════╣  │
+│  ║ Status: Disabled                     Priority: 10 ║  │
+│  ║ ... (collapsed when disabled)                     ║  │
+│  ║ [Edit Rule]  [Duplicate]  [Delete]                ║  │
+│  ╚══════════════════════════════════════════════════╝  │
+│                                                          │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Rule Editor Dialog:**
+```
+┌──────────────────────────────────────────┐
+│  Edit Rule: Screenshot Organization      │
+├──────────────────────────────────────────┤
+│                                           │
+│  Rule Name:                               │
+│  [Screenshot Organization_______________] │
+│                                           │
+│  Description:                             │
+│  [Organize screenshots by date...______] │
+│                                           │
+│  Source Patterns (one per line):         │
+│  ┌─────────────────────────────────────┐ │
+│  │Screenshot*.png                      │ │
+│  │Screen Shot*.png                     │ │
+│  │                                     │ │
+│  └─────────────────────────────────────┘ │
+│                                           │
+│  Source Directories:                      │
+│  • ~/Desktop              [Remove] [Add]  │
+│  • ~/Downloads            [Remove]        │
+│                                           │
+│  Destination:                             │
+│  [~/Downloads/screenshots/{date}_______]  │
+│  Variables: {year} {month} {day} {name}   │
+│                                           │
+│  Options:                                 │
+│  ☑️  Organize by date                     │
+│  ☑️  Check duplicates by checksum         │
+│  ☐  Delete empty source folders           │
+│                                           │
+│  Advanced:                                │
+│  Min Size: [___] MB  Max Size: [___] MB   │
+│  Min Age:  [___] days Max Age: [___] days │
+│                                           │
+│  Priority: [1_____]                       │
+│                                           │
+│  [Cancel]              [Save Rule]        │
+└──────────────────────────────────────────┘
+```
+
+### 5.3 Tab 3: Large Files
+
+**Layout:**
+```
+┌─────────────────────────────────────────────────────────┐
+│  Large Files                    Threshold: [100_] MB     │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  Total: 47 files    Size: 8.3 GB    [🔄 Refresh]        │
+│                                                          │
+│  Sort by: [Size ▼]   Filter: [All Locations ▼]          │
+│                                                          │
+│  ╔══════════════════════════════════════════════════╗  │
+│  ║ ☐  video-export-final.mp4             2.4 GB    ║  │
+│  ║     ~/Downloads/                                  ║  │
+│  ║     Modified: 2025-10-15              [Delete]   ║  │
+│  ╠══════════════════════════════════════════════════╣  │
+│  ║ ☐  backup.zip                         1.8 GB    ║  │
+│  ║     ~/Downloads/                                  ║  │
+│  ║     Modified: 2025-10-01              [Delete]   ║  │
+│  ╠══════════════════════════════════════════════════╣  │
+│  ║ ☐  dataset.tar.gz                     1.2 GB    ║  │
+│  ║     ~/Downloads/                                  ║  │
+│  ║     Modified: 2025-09-28              [Delete]   ║  │
+│  ╚══════════════════════════════════════════════════╝  │
+│                                                          │
+│  [☐ Select All]  [Delete Selected (0)]                  │
+│                                                          │
+│  Note: Deleting files is permanent and cannot be undone!│
+│                                                          │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 5.4 Tab 4: Old Files
+
+**Layout:**
+```
+┌─────────────────────────────────────────────────────────┐
+│  Old Files                      Threshold: [90__] days   │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  Total: 234 files   Size: 1.2 GB    [🔄 Refresh]        │
+│                                                          │
+│  Sort by: [Age ▼]   Filter: [All Types ▼]               │
+│                                                          │
+│  ╔══════════════════════════════════════════════════╗  │
+│  ║ ☐  old-report-draft.pdf              142 days   ║  │
+│  ║     ~/Downloads/                      2.3 MB    ║  │
+│  ║     Modified: 2025-06-14              [Delete]   ║  │
+│  ╠══════════════════════════════════════════════════╣  │
+│  ║ ☐  meeting-notes-2025-05.txt          138 days   ║  │
+│  ║     ~/Documents/                      45 KB     ║  │
+│  ║     Modified: 2025-06-18              [Delete]   ║  │
+│  ╠══════════════════════════════════════════════════╣  │
+│  ║ ☐  temp-screenshot.png                 95 days   ║  │
+│  ║     ~/Desktop/                        1.2 MB    ║  │
+│  ║     Modified: 2025-07-31              [Delete]   ║  │
+│  ╚══════════════════════════════════════════════════╝  │
+│                                                          │
+│  [☐ Select All]  [Delete Selected (0)]                  │
+│                                                          │
+│  Note: Files are considered old based on last modified   │
+│  date. Deleting files is permanent and cannot be undone! │
+│                                                          │
+└─────────────────────────────────────────────────────────┘
+```
+
+## 6. Core Algorithms
+
+### 6.1 Screenshot Location Detection
+
+```python
+def detect_screenshot_location() -> str:
+    """
+    Detect where macOS saves screenshots by reading system preferences.
+    
+    Returns:
+        Path to screenshot location
+    """
+    # Check system preferences
+    result = subprocess.run(
+        ["defaults", "read", "com.apple.screencapture", "location"],
+        capture_output=True,
+        text=True
+    )
+    
+    if result.returncode == 0:
+        return result.stdout.strip()
+    
+    # Fallback to Desktop (macOS default)
+    return str(Path.home() / "Desktop")
+```
+
+### 6.2 Duplicate Detection
+
+```python
+def find_duplicates(file_paths: List[str]) -> List[Tuple[str, str]]:
+    """
+    Find duplicate files based on SHA-256 checksum.
+    
+    Args:
+        file_paths: List of file paths to check
+        
+    Returns:
+        List of (original, duplicate) path tuples
+    """
+    checksum_map: Dict[str, str] = {}
+    duplicates: List[Tuple[str, str]] = []
+    
+    for file_path in file_paths:
+        # Check cache first
+        checksum = get_cached_checksum(file_path)
+        if not checksum:
+            checksum = calculate_sha256(file_path)
+            cache_checksum(file_path, checksum)
+        
+        if checksum in checksum_map:
+            # Duplicate found
+            original = checksum_map[checksum]
+            duplicates.append((original, file_path))
+        else:
+            checksum_map[checksum] = file_path
+    
+    return duplicates
+
+def calculate_sha256(file_path: str, chunk_size: int = 8192) -> str:
+    """
+    Calculate SHA-256 checksum of a file.
+    
+    Args:
+        file_path: Path to file
+        chunk_size: Size of chunks to read (for large files)
+        
+    Returns:
+        Hex digest of SHA-256 hash
+    """
+    sha256 = hashlib.sha256()
+    
+    with open(file_path, 'rb') as f:
+        while chunk := f.read(chunk_size):
+            sha256.update(chunk)
+    
+    return sha256.hexdigest()
+```
+
+### 6.3 Date-Based Organization
+
+```python
+def get_date_path(file_path: str, template: str) -> str:
+    """
+    Generate date-based path from file modification time.
+    
+    Args:
+        file_path: Source file path
+        template: Destination template with {year}, {month}, {day}
+        
+    Returns:
+        Formatted destination path
+    """
+    # Get file modification time
+    mtime = Path(file_path).stat().st_mtime
+    dt = datetime.fromtimestamp(mtime)
+    
+    # Replace template variables
+    result = template.replace('{year}', f'{dt.year:04d}')
+    result = result.replace('{month}', f'{dt.month:02d}')
+    result = result.replace('{day}', f'{dt.day:02d}')
+    result = result.replace('{name}', Path(file_path).stem)
+    
+    return result
+```
+
+### 6.4 Rule Execution Engine
+
+```python
+def execute_rules(rules: List[Rule], dry_run: bool = True) -> ScanResult:
+    """
+    Execute all enabled rules and return results.
+    
+    Args:
+        rules: List of rules to execute
+        dry_run: If True, only preview changes without executing
+        
+    Returns:
+        Scan result with all operations
+    """
+    # Sort by priority
+    sorted_rules = sorted(rules, key=lambda r: r.priority)
+    
+    all_operations = []
+    processed_files = set()
+    
+    for rule in sorted_rules:
+        if not rule.enabled:
+            continue
+        
+        # Find matching files
+        matched_files = find_matching_files(rule)
+        
+        for file_meta in matched_files:
+            # Skip if already processed by higher priority rule
+            if file_meta.path in processed_files:
+                continue
+            
+            # Determine destination
+            if rule.organize_by_date:
+                dest = get_date_path(file_meta.path, rule.destination)
+            else:
+                dest = Path(rule.destination) / file_meta.filename
+            
+            # Check for duplicates
+            if rule.check_duplicates and dest.exists():
+                if is_duplicate(file_meta.path, str(dest)):
+                    operation = FileOperation(
+                        operation_type="delete",
+                        source_path=file_meta.path,
+                        reason="duplicate"
+                    )
+                else:
+                    operation = FileOperation(
+                        operation_type="skip",
+                        source_path=file_meta.path,
+                        reason="name_conflict"
+                    )
+            else:
+                operation = FileOperation(
+                    operation_type="move",
+                    source_path=file_meta.path,
+                    destination_path=str(dest)
+                )
+            
+            all_operations.append(operation)
+            processed_files.add(file_meta.path)
+            
+            # Execute if not dry run
+            if not dry_run:
+                execute_operation(operation)
+    
+    return ScanResult(
+        total_files=len(processed_files),
+        operations=all_operations
+    )
+```
+
+## 7. Database Schema
+
+```sql
+-- SQLite schema for operation history
+
+CREATE TABLE operations (
+    id TEXT PRIMARY KEY,
+    timestamp DATETIME NOT NULL,
+    operation_type TEXT NOT NULL,  -- 'move', 'delete', 'skip'
+    source_path TEXT NOT NULL,
+    destination_path TEXT,
+    file_size INTEGER NOT NULL,
+    checksum TEXT NOT NULL,
+    rule_id TEXT NOT NULL,
+    dry_run BOOLEAN NOT NULL,
+    success BOOLEAN NOT NULL,
+    error_message TEXT,
+    duplicate_of TEXT,
+    FOREIGN KEY (duplicate_of) REFERENCES operations(id)
+);
+
+CREATE INDEX idx_operations_timestamp ON operations(timestamp);
+CREATE INDEX idx_operations_rule ON operations(rule_id);
+CREATE INDEX idx_operations_checksum ON operations(checksum);
+
+CREATE TABLE checksum_cache (
+    file_path TEXT PRIMARY KEY,
+    checksum TEXT NOT NULL,
+    file_size INTEGER NOT NULL,
+    modified_time DATETIME NOT NULL,
+    cached_at DATETIME NOT NULL
+);
+
+CREATE INDEX idx_cache_checksum ON checksum_cache(checksum);
+
+-- Invalidate cache when file size or mtime changes
+```
+
+## 8. Error Handling
+
+### 8.1 Error Categories
+
+1. **Permission Errors**: File cannot be read/written
+   - Show user-friendly message
+   - Log full error details
+   - Suggest fixes (check permissions)
+
+2. **Path Errors**: Source/destination invalid
+   - Validate before execution
+   - Show clear error in UI
+   - Allow user to fix configuration
+
+3. **Disk Space Errors**: Not enough space for operation
+   - Check before execution
+   - Show required vs available space
+   - Suggest files to delete
+
+4. **Checksum Errors**: Cannot calculate hash
+   - Retry once
+   - Fall back to skip operation
+   - Log for manual review
+
+### 8.2 Error Recovery
+
+```python
+@dataclass
+class OperationError:
+    operation: FileOperation
+    error_type: str
+    error_message: str
+    suggested_action: str
+    retryable: bool
+
+def handle_operation_error(operation: FileOperation, error: Exception) -> OperationError:
+    """
+    Categorize error and provide recovery suggestion.
+    """
+    if isinstance(error, PermissionError):
+        return OperationError(
+            operation=operation,
+            error_type="permission",
+            error_message=str(error),
+            suggested_action="Check file permissions or run with elevated privileges",
+            retryable=False
+        )
+    
+    elif isinstance(error, FileNotFoundError):
+        return OperationError(
+            operation=operation,
+            error_type="not_found",
+            error_message="File was moved or deleted",
+            suggested_action="Refresh scan and try again",
+            retryable=True
+        )
+    
+    # ... handle other error types
+```
+
+## 9. Performance Specifications
+
+### 9.1 Benchmarks
+
+- Scan 1,000 files: < 5 seconds
+- Calculate checksum for 100MB file: < 2 seconds
+- Move 100 files: < 3 seconds
+- GUI startup: < 3 seconds
+- Configuration reload: < 500ms
+
+### 9.2 Optimization Strategies
+
+1. **Parallel Processing**: Use thread pool for file scanning
+2. **Checksum Caching**: Store checksums in SQLite to avoid recalculation
+3. **Lazy Loading**: Load file metadata only when needed
+4. **Batch Operations**: Group file moves into batches
+5. **Progress Streaming**: Stream results to GUI as they complete
+
+### 9.3 Memory Management
+
+- Max memory usage: 200MB
+- Cache size limit: 50MB
+- Cleanup old cache entries after 30 days
+- Stream large file operations instead of loading all in memory
+
+## 10. Testing Requirements
+
+### 10.1 Unit Tests
+
+- Rule matching logic
+- Checksum calculation
+- Date path generation
+- Duplicate detection
+- Configuration parsing
+
+### 10.2 Integration Tests
+
+- End-to-end file organization
+- GUI → Backend communication
+- CLI command execution
+- Database operations
+- Configuration import/export
+
+### 10.3 Test Scenarios
+
+1. **Happy Path**: 100 screenshots organized successfully
+2. **Duplicate Handling**: Same file in source and destination
+3. **Permission Errors**: Cannot write to destination
+4. **Large Files**: 1GB+ file operations
+5. **Concurrent Operations**: Multiple rules matching same file
+6. **Edge Cases**: Empty directories, special characters in filenames
+
+---
+*This specification provides complete implementation details. All features must follow these specifications.*
