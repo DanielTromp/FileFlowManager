@@ -187,6 +187,55 @@ def get_configuration() -> Dict[str, Any]:
         raise
 
 
+def export_configuration(destination_path: str) -> Dict[str, Any]:
+    """
+    Export configuration to file (T127).
+
+    Args:
+        destination_path: Path to export configuration to
+
+    Returns:
+        Success message
+    """
+    try:
+        config_mgr = get_config_manager()
+        config_mgr.export(destination_path)
+
+        logger.info(f"Configuration exported to: {destination_path}")
+        return {"success": True, "message": f"Configuration exported to {destination_path}"}
+
+    except Exception as e:
+        logger.error(f"Failed to export configuration: {e}", exc_info=True)
+        raise
+
+
+def import_configuration(
+    source_path: str,
+    merge: bool = False
+) -> Dict[str, Any]:
+    """
+    Import configuration from file (T128).
+
+    Args:
+        source_path: Path to import configuration from
+        merge: If True, merge with existing config. If False, replace entirely.
+
+    Returns:
+        Success message
+    """
+    try:
+        config_mgr = get_config_manager()
+        config_mgr.import_config(source_path, merge=merge)
+
+        mode = "merged" if merge else "replaced"
+        logger.info(f"Configuration {mode} from: {source_path}")
+        return {"success": True, "message": f"Configuration {mode} successfully"}
+
+    except Exception as e:
+        logger.error(f"Failed to import configuration: {e}", exc_info=True)
+        raise
+
+
 def detect_screenshot_location() -> str:
     """Auto-detect macOS screenshot location."""
     try:
@@ -457,6 +506,54 @@ def get_large_files(
         raise
 
 
+def get_old_files(
+    threshold_days: int = 90,
+    file_types: Optional[List[str]] = None,
+    limit: Optional[int] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Find files older than threshold.
+
+    Args:
+        threshold_days: Age threshold in days (default: 90)
+        file_types: Optional list of file extensions to filter by
+        limit: Maximum number of files to return
+
+    Returns:
+        List of FileMetadata dictionaries sorted by age (oldest first)
+    """
+    try:
+        from fileflow_core.file_scanner import FileScanner
+
+        config_mgr = get_config_manager()
+        config = config_mgr.load()
+
+        # Get monitored directories (T107)
+        monitored_dirs = [Path(config_mgr.expand_env_vars(d)) for d in config.paths.monitored_directories]
+
+        # Scan for old files (T107)
+        scanner = FileScanner()
+        old_files = scanner.find_old_files(
+            directories=monitored_dirs,
+            threshold_days=threshold_days,
+            file_types=file_types,
+        )
+
+        # Apply limit if specified
+        if limit and limit > 0:
+            old_files = old_files[:limit]
+
+        logger.info(
+            f"Found {len(old_files)} files older than {threshold_days} days"
+        )
+
+        return [file.model_dump(mode="json") for file in old_files]
+
+    except Exception as e:
+        logger.error(f"Failed to get old files: {e}", exc_info=True)
+        raise
+
+
 def delete_files(
     file_paths: List[str],
     confirm_deletions: bool = True,
@@ -528,8 +625,14 @@ if __name__ == "__main__":
                 result = toggle_rule(**args)
             elif command == "get_large_files":
                 result = get_large_files(**args)
+            elif command == "get_old_files":
+                result = get_old_files(**args)
             elif command == "delete_files":
                 result = delete_files(**args)
+            elif command == "export_configuration":
+                result = export_configuration(**args)
+            elif command == "import_configuration":
+                result = import_configuration(**args)
             else:
                 result = {"error": f"Unknown command: {command}"}
 

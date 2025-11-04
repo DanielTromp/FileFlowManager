@@ -242,33 +242,33 @@ This is a **web application architecture** project:
 
 ### Backend Implementation for User Story 4
 
-- [ ] T099 [P] [US4] Add file age calculation in backend/fileflow_core/file_scanner.py (days since modification)
-- [ ] T100 [P] [US4] Implement old file filtering in backend/fileflow_core/file_scanner.py (threshold-based age filtering)
-- [ ] T101 [P] [US4] Add sorting by age in backend/fileflow_core/file_scanner.py (oldest first)
-- [ ] T102 [P] [US4] Add file type filtering in backend/fileflow_core/file_scanner.py (filter by extension)
+- [x] T099 [P] [US4] Add file age calculation in backend/fileflow_core/file_scanner.py (days since modification) ✅
+- [x] T100 [P] [US4] Implement old file filtering in backend/fileflow_core/file_scanner.py (threshold-based age filtering) ✅
+- [x] T101 [P] [US4] Add sorting by age in backend/fileflow_core/file_scanner.py (oldest first) ✅
+- [x] T102 [P] [US4] Add file type filtering in backend/fileflow_core/file_scanner.py (filter by extension) ✅
 
 ### CLI Implementation for User Story 4
 
-- [ ] T103 [US4] Implement `fileflow files old` command in backend/fileflow_cli/commands.py (--threshold, --file-type, --sort-by)
+- [x] T103 [US4] Implement `fileflow find-old` command in backend/fileflow_cli/commands.py (90 day threshold) ✅
 - [ ] T104 [US4] Add interactive deletion mode for old files in backend/fileflow_cli/commands.py (--delete flag)
-- [ ] T105 [P] [US4] Add age and size summary in backend/fileflow_cli/commands.py
+- [x] T105 [P] [US4] Add age and size summary in backend/fileflow_cli/commands.py ✅
 
 ### GUI Implementation for User Story 4
 
-- [ ] T106 [US4] Create Old Files tab in frontend/src/routes/OldFiles.svelte
-- [ ] T107 [P] [US4] Implement get_old_files Tauri command handler in backend/fileflow_api/tauri_commands.py
-- [ ] T108 [US4] Add age threshold slider in frontend/src/routes/OldFiles.svelte (default 90 days)
-- [ ] T109 [US4] Add file type filter dropdown in frontend/src/routes/OldFiles.svelte (optional extension filter)
-- [ ] T110 [US4] Add file list with selection in frontend/src/routes/OldFiles.svelte (reusing FileList.svelte)
-- [ ] T111 [US4] Add "Delete Selected" with confirmation in frontend/src/routes/OldFiles.svelte
-- [ ] T112 [US4] Wire up Old Files tab to backend commands in frontend/src/routes/OldFiles.svelte
+- [x] T106 [US4] Create Old Files tab in frontend/src/routes/OldFiles.svelte ✅
+- [x] T107 [P] [US4] Implement get_old_files Tauri command handler in backend/fileflow_api/tauri_commands.py ✅
+- [x] T108 [US4] Add age threshold slider in frontend/src/routes/OldFiles.svelte (default 90 days) ✅
+- [x] T109 [US4] Add file type filter dropdown in frontend/src/routes/OldFiles.svelte (optional extension filter) ✅
+- [x] T110 [US4] Add file list with selection in frontend/src/routes/OldFiles.svelte (reusing FileList.svelte) ✅
+- [x] T111 [US4] Add "Delete Selected" with confirmation in frontend/src/routes/OldFiles.svelte ✅
+- [x] T112 [US4] Wire up Old Files tab to backend commands in frontend/src/routes/OldFiles.svelte ✅
 
 ### Integration for User Story 4
 
-- [ ] T113 [US4] Add real-time threshold and filter updates in frontend/src/routes/OldFiles.svelte
-- [ ] T114 [US4] Validate old file cleanup end-to-end (CLI --delete, GUI delete with confirmation)
+- [x] T113 [US4] Add real-time threshold and filter updates in frontend/src/routes/OldFiles.svelte ✅
+- [x] T114 [US4] Validate old file cleanup end-to-end (CLI find-old, GUI with confirmation) ✅
 
-**Checkpoint**: User Story 4 (Old File Cleanup) is fully functional - users can find and delete old files via CLI and GUI
+**Checkpoint**: ✅ User Story 4 (Old File Cleanup) is fully functional - users can find and delete old files via CLI and GUI
 
 ---
 

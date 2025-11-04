@@ -4,6 +4,8 @@
   import Dashboard from './routes/Dashboard.svelte';
   import Rules from './routes/Rules.svelte';
   import LargeFiles from './routes/LargeFiles.svelte';
+  import OldFiles from './routes/OldFiles.svelte';
+  import Settings from './routes/Settings.svelte';
 
   // Create a store for the current route
   export const currentRoute = writable('dashboard');
@@ -17,10 +19,9 @@
   {:else if $currentRoute === 'large-files'}
     <LargeFiles />
   {:else if $currentRoute === 'old-files'}
-    <div class="text-center py-12">
-      <h2 class="text-2xl font-bold">Old Files</h2>
-      <p class="text-base-content/60 mt-2">Coming soon in Phase 6</p>
-    </div>
+    <OldFiles />
+  {:else if $currentRoute === 'settings'}
+    <Settings />
   {:else}
     <Dashboard />
   {/if}

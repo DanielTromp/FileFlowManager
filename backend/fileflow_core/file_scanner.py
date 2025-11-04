@@ -198,7 +198,7 @@ class FileScanner:
         file_types: Optional[List[str]] = None,
         progress_callback: Optional[Callable[[str], None]] = None,
     ) -> List[FileMetadata]:
-        """Find files older than threshold."""
+        """Find files older than threshold, sorted by age (oldest first)."""
         all_files = self.scan_directories_parallel(
             directories,
             patterns=["*"],
@@ -214,6 +214,9 @@ class FileScanner:
                 f for f in old_files if f.extension.lstrip(".") in file_types
             ]
 
+        # Sort by age, oldest first (T101)
+        old_files.sort(key=lambda f: f.age_days, reverse=True)
+
         return old_files
 
     def _get_file_metadata(self, file_path: Path) -> Optional[FileMetadata]:
@@ -221,12 +224,20 @@ class FileScanner:
         try:
             stats = file_path.stat()
 
+            # Use birthtime (date added) on macOS/BSD, fallback to ctime on other systems
+            # st_birthtime is more accurate for "when file was added to system"
+            birthtime = getattr(stats, 'st_birthtime', stats.st_ctime)
+
+            # Use the more recent of birthtime and mtime to avoid impossibly old dates
+            # (e.g., files with birthtime set to Unix epoch 1970)
+            created_timestamp = max(birthtime, stats.st_mtime)
+
             return FileMetadata(
                 path=str(file_path.absolute()),
                 filename=file_path.name,
                 extension=file_path.suffix,
                 size_bytes=stats.st_size,
-                created_at=datetime.fromtimestamp(stats.st_ctime),
+                created_at=datetime.fromtimestamp(created_timestamp),
                 modified_at=datetime.fromtimestamp(stats.st_mtime),
                 checksum=None,  # Calculated on demand
                 matched_rules=[],

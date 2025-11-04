@@ -44,6 +44,20 @@ def get_database() -> Database:
     return Database(DEFAULT_DB_PATH)
 
 
+def format_age(age_days: float) -> str:
+    """Format file age in human-readable format."""
+    if age_days < 1:
+        return "< 1 day"
+    elif age_days < 30:
+        return f"{int(age_days)} days"
+    elif age_days < 365:
+        months = int(age_days / 30)
+        return f"{months} month{'s' if months > 1 else ''}"
+    else:
+        years = age_days / 365
+        return f"{years:.1f} year{'s' if years >= 2 else ''}"
+
+
 @app.command()
 def scan() -> None:
     """
@@ -469,6 +483,170 @@ def find_large() -> None:
     # Summary
     total_size = sum(f.size_bytes for f in large_files) / (1024 * 1024)
     console.print(f"\n[bold]Found {len(large_files)} files, total size: {total_size:.2f} MB[/bold]")
+
+
+@app.command(name="find-old")
+def find_old() -> None:
+    """Find files older than 90 days."""
+    from pathlib import Path
+    from fileflow_core.file_scanner import FileScanner
+
+    console.print("\n[bold]Finding files older than 90 days...[/bold]\n")
+
+    # Get monitored directories from config
+    config_mgr = get_config_manager()
+    config = config_mgr.load()
+    monitored_dirs = [Path(config_mgr.expand_env_vars(d)) for d in config.paths.monitored_directories]
+
+    # Scan for old files (T103)
+    scanner = FileScanner()
+    old_files = scanner.find_old_files(
+        directories=monitored_dirs,
+        threshold_days=90,
+    )
+
+    if not old_files:
+        console.print("[yellow]No files found older than 90 days.[/yellow]")
+        return
+
+    # Display results in table (T103)
+    from rich.table import Table
+
+    table = Table(title="Old Files (> 90 days)")
+    table.add_column("File", style="cyan")
+    table.add_column("Age", justify="right", style="yellow")
+    table.add_column("Size", justify="right")
+    table.add_column("Path", style="dim")
+
+    for file_meta in old_files[:20]:  # Limit to 20 files
+        age_str = format_age(file_meta.age_days) if file_meta.age_days else "N/A"
+        size_mb = file_meta.size_bytes / (1024 * 1024)
+        size_str = f"{size_mb:.2f} MB" if size_mb < 1024 else f"{size_mb/1024:.2f} GB"
+        table.add_row(
+            file_meta.filename,
+            age_str,
+            size_str,
+            str(Path(file_meta.path).parent),
+        )
+
+    console.print(table)
+
+    # Summary (T105)
+    total_size_mb = sum(f.size_bytes for f in old_files) / (1024 * 1024)
+    avg_age_days = sum(f.age_days for f in old_files if f.age_days) / len(old_files) if old_files else 0
+    console.print(f"\n[bold]Found {len(old_files)} files, total size: {total_size_mb:.2f} MB[/bold]")
+    console.print(f"[bold]Average age: {avg_age_days:.0f} days ({avg_age_days/365:.1f} years)[/bold]\n")
+
+
+# Configuration Management Commands
+
+@app.command(name="config-show")
+def config_show() -> None:
+    """Show current configuration (T119)."""
+    console.print("\n[bold]Current Configuration[/bold]\n")
+
+    try:
+        config_mgr = get_config_manager()
+        config = config_mgr.load()
+
+        # General settings
+        console.print("[bold cyan]General Settings[/bold cyan]")
+        console.print(f"  Log level: {config.general.log_level}")
+        console.print(f"  Auto-run on startup: {config.general.auto_run_on_startup}")
+        console.print(f"  Auto-run interval: {config.general.auto_run_interval_minutes} minutes")
+        console.print(f"  Notifications: {config.general.enable_notifications}")
+        console.print(f"  Cache: {config.general.cache_enabled}")
+
+        # Paths
+        console.print(f"\n[bold cyan]Paths[/bold cyan]")
+        console.print(f"  Screenshot source: {config.paths.screenshot_source}")
+        console.print(f"  Screenshot destination: {config.paths.screenshot_destination}")
+        if config.paths.monitored_directories:
+            console.print(f"  Monitored directories: {', '.join(config.paths.monitored_directories)}")
+
+        # Rules
+        console.print(f"\n[bold cyan]Rules ({len(config.rules)})[/bold cyan]")
+        for rule in config.rules:
+            status = "✓" if rule.enabled else "✗"
+            console.print(f"  [{status}] {rule.name} ({rule.id})")
+
+        console.print()
+
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command(name="config-export")
+def config_export(output_path: str) -> None:
+    """Export configuration to TOML file (T120)."""
+    console.print(f"\n[bold]Exporting configuration to {output_path}...[/bold]\n")
+
+    try:
+        config_mgr = get_config_manager()
+        config_mgr.export(output_path)
+
+        console.print(f"[green]✓ Configuration exported successfully[/green]\n")
+
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command(name="config-import")
+def config_import(input_path: str) -> None:
+    """Import configuration from TOML file (T121). Replaces existing configuration."""
+    console.print(f"\n[bold]Importing configuration from {input_path} (replace mode)...[/bold]\n")
+
+    try:
+        config_mgr = get_config_manager()
+        config_mgr.import_config(input_path, merge=False)
+
+        console.print(f"[green]✓ Configuration imported successfully[/green]\n")
+
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command(name="config-import-merge")
+def config_import_merge(input_path: str) -> None:
+    """Import configuration with merge (keeps existing rules, adds new ones)."""
+    console.print(f"\n[bold]Importing configuration from {input_path} (merge mode)...[/bold]\n")
+
+    try:
+        config_mgr = get_config_manager()
+        config_mgr.import_config(input_path, merge=True)
+
+        console.print(f"[green]✓ Configuration merged successfully[/green]\n")
+
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command(name="config-validate")
+def config_validate(config_path: Optional[str] = None) -> None:
+    """Validate configuration file (T122)."""
+    if config_path:
+        console.print(f"\n[bold]Validating configuration at {config_path}...[/bold]\n")
+        config_mgr = ConfigManager(config_path)
+    else:
+        console.print("\n[bold]Validating default configuration...[/bold]\n")
+        config_mgr = get_config_manager()
+
+    try:
+        valid, error_msg = config_mgr.validate()
+
+        if valid:
+            console.print("[green]✓ Configuration is valid[/green]\n")
+        else:
+            console.print(f"[red]✗ Configuration is invalid: {error_msg}[/red]\n")
+            raise typer.Exit(1)
+
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":

@@ -375,6 +375,56 @@ async fn get_large_files(threshold_mb: Option<u32>, limit: Option<u32>) -> Resul
         .map_err(|e| format!("Failed to parse response: {} - Output: {}", e, stdout))
 }
 
+/// Get old files
+#[tauri::command]
+async fn get_old_files(
+    threshold_days: Option<u32>,
+    file_types: Option<Vec<String>>,
+    limit: Option<u32>
+) -> Result<Vec<serde_json::Value>, String> {
+    let backend_dir = std::env::current_dir()
+        .map_err(|e| e.to_string())?
+        .parent()
+        .ok_or("Failed to get parent directory")?
+        .parent()
+        .ok_or("Failed to get grandparent directory")?
+        .join("backend");
+
+    let poetry_cmd = if std::path::Path::new("/Users/daniel/.local/bin/poetry").exists() {
+        "/Users/daniel/.local/bin/poetry"
+    } else if std::path::Path::new("/usr/local/bin/poetry").exists() {
+        "/usr/local/bin/poetry"
+    } else {
+        "poetry"
+    };
+
+    let args = serde_json::json!({
+        "threshold_days": threshold_days.unwrap_or(90),
+        "file_types": file_types,
+        "limit": limit
+    });
+
+    let output = Command::new(poetry_cmd)
+        .current_dir(&backend_dir)
+        .arg("run")
+        .arg("python")
+        .arg("-m")
+        .arg("fileflow_api.tauri_commands")
+        .arg("get_old_files")
+        .arg(args.to_string())
+        .output()
+        .map_err(|e| format!("Failed to execute Python backend: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Python backend error: {}", stderr));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    serde_json::from_str(&stdout)
+        .map_err(|e| format!("Failed to parse response: {} - Output: {}", e, stdout))
+}
+
 /// Delete files
 #[tauri::command]
 async fn delete_files(file_paths: Vec<String>, confirm_deletions: bool) -> Result<serde_json::Value, String> {
@@ -420,6 +470,133 @@ async fn delete_files(file_paths: Vec<String>, confirm_deletions: bool) -> Resul
         .map_err(|e| format!("Failed to parse response: {} - Output: {}", e, stdout))
 }
 
+/// Get current configuration
+#[tauri::command]
+async fn get_configuration() -> Result<serde_json::Value, String> {
+    let backend_dir = std::env::current_dir()
+        .map_err(|e| e.to_string())?
+        .parent()
+        .ok_or("Failed to get parent directory")?
+        .parent()
+        .ok_or("Failed to get grandparent directory")?
+        .join("backend");
+
+    let poetry_cmd = if std::path::Path::new("/Users/daniel/.local/bin/poetry").exists() {
+        "/Users/daniel/.local/bin/poetry"
+    } else if std::path::Path::new("/usr/local/bin/poetry").exists() {
+        "/usr/local/bin/poetry"
+    } else {
+        "poetry"
+    };
+
+    let output = Command::new(poetry_cmd)
+        .current_dir(&backend_dir)
+        .arg("run")
+        .arg("python")
+        .arg("-m")
+        .arg("fileflow_api.tauri_commands")
+        .arg("get_configuration")
+        .arg("{}")
+        .output()
+        .map_err(|e| format!("Failed to execute Python backend: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Python backend error: {}", stderr));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    serde_json::from_str(&stdout)
+        .map_err(|e| format!("Failed to parse response: {} - Output: {}", e, stdout))
+}
+
+/// Export configuration to file
+#[tauri::command]
+async fn export_configuration(destination_path: String) -> Result<serde_json::Value, String> {
+    let backend_dir = std::env::current_dir()
+        .map_err(|e| e.to_string())?
+        .parent()
+        .ok_or("Failed to get parent directory")?
+        .parent()
+        .ok_or("Failed to get grandparent directory")?
+        .join("backend");
+
+    let poetry_cmd = if std::path::Path::new("/Users/daniel/.local/bin/poetry").exists() {
+        "/Users/daniel/.local/bin/poetry"
+    } else if std::path::Path::new("/usr/local/bin/poetry").exists() {
+        "/usr/local/bin/poetry"
+    } else {
+        "poetry"
+    };
+
+    let args = serde_json::json!({"destination_path": destination_path});
+
+    let output = Command::new(poetry_cmd)
+        .current_dir(&backend_dir)
+        .arg("run")
+        .arg("python")
+        .arg("-m")
+        .arg("fileflow_api.tauri_commands")
+        .arg("export_configuration")
+        .arg(args.to_string())
+        .output()
+        .map_err(|e| format!("Failed to execute Python backend: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Python backend error: {}", stderr));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    serde_json::from_str(&stdout)
+        .map_err(|e| format!("Failed to parse response: {} - Output: {}", e, stdout))
+}
+
+/// Import configuration from file
+#[tauri::command]
+async fn import_configuration(source_path: String, merge: bool) -> Result<serde_json::Value, String> {
+    let backend_dir = std::env::current_dir()
+        .map_err(|e| e.to_string())?
+        .parent()
+        .ok_or("Failed to get parent directory")?
+        .parent()
+        .ok_or("Failed to get grandparent directory")?
+        .join("backend");
+
+    let poetry_cmd = if std::path::Path::new("/Users/daniel/.local/bin/poetry").exists() {
+        "/Users/daniel/.local/bin/poetry"
+    } else if std::path::Path::new("/usr/local/bin/poetry").exists() {
+        "/usr/local/bin/poetry"
+    } else {
+        "poetry"
+    };
+
+    let args = serde_json::json!({
+        "source_path": source_path,
+        "merge": merge
+    });
+
+    let output = Command::new(poetry_cmd)
+        .current_dir(&backend_dir)
+        .arg("run")
+        .arg("python")
+        .arg("-m")
+        .arg("fileflow_api.tauri_commands")
+        .arg("import_configuration")
+        .arg(args.to_string())
+        .output()
+        .map_err(|e| format!("Failed to execute Python backend: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Python backend error: {}", stderr));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    serde_json::from_str(&stdout)
+        .map_err(|e| format!("Failed to parse response: {} - Output: {}", e, stdout))
+}
+
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
@@ -431,7 +608,11 @@ fn main() {
             delete_rule,
             toggle_rule,
             get_large_files,
-            delete_files
+            get_old_files,
+            delete_files,
+            get_configuration,
+            export_configuration,
+            import_configuration
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -8,6 +8,7 @@
     { id: 'rules', name: 'Rules', icon: '⚙️' },
     { id: 'large-files', name: 'Large Files', icon: '📦' },
     { id: 'old-files', name: 'Old Files', icon: '🕒' },
+    { id: 'settings', name: 'Settings', icon: '⚙️' },
   ];
 
   function navigateTo(routeId: string) {
@@ -43,7 +44,7 @@
       <div class="text-xs text-base-content/60">
         <div>FileFlow Manager v0.1.0</div>
         <div class="mt-1">
-          <button class="link link-primary text-xs">Settings</button> •
+          <button class="link link-primary text-xs" on:click={() => navigateTo('settings')}>Settings</button> •
           <button class="link link-primary text-xs">Help</button>
         </div>
       </div>
