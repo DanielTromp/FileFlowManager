@@ -54,7 +54,9 @@ class ConfigManager:
 
         # Process non-table items first
         for key, value in data.items():
-            if isinstance(value, dict):
+            if value is None:
+                continue  # Skip None values entirely
+            elif isinstance(value, dict):
                 continue  # Handle tables separately
             elif isinstance(value, list):
                 if value and isinstance(value[0], dict):
@@ -86,7 +88,9 @@ class ConfigManager:
 
     def _format_value(self, value) -> str:
         """Format a value for TOML."""
-        if isinstance(value, bool):
+        if value is None:
+            raise ValueError("None values should not reach _format_value")
+        elif isinstance(value, bool):
             return "true" if value else "false"
         elif isinstance(value, str):
             # Escape quotes and backslashes
@@ -97,8 +101,6 @@ class ConfigManager:
         elif isinstance(value, list):
             formatted_items = [self._format_value(item) for item in value]
             return "[" + ", ".join(formatted_items) + "]"
-        elif value is None:
-            return '""'
         else:
             return str(value)
 

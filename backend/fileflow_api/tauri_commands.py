@@ -258,6 +258,156 @@ def get_operation_history(
         raise
 
 
+def create_rule(rule_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Create a new rule.
+
+    Args:
+        rule_data: Rule configuration dictionary
+
+    Returns:
+        Created rule as dictionary
+    """
+    try:
+        from fileflow_config.rule_schema import RuleValidator
+        from fileflow_core.models import Rule
+
+        config_mgr = get_config_manager()
+        config = config_mgr.load()
+
+        # Create rule from data
+        new_rule = Rule(**rule_data)
+
+        # Check if rule ID already exists
+        if any(r.id == new_rule.id for r in config.rules):
+            raise ValueError(f"Rule with ID '{new_rule.id}' already exists")
+
+        # Validate rule
+        valid, errors = RuleValidator.validate_rule(new_rule, check_filesystem=True)
+        if not valid:
+            raise ValueError(f"Validation errors: {'; '.join(errors)}")
+
+        # Add to configuration
+        config.rules.append(new_rule)
+        config_mgr.save(config)
+
+        logger.info(f"Created rule: {new_rule.name} ({new_rule.id})")
+        return new_rule.model_dump(mode="json")
+
+    except Exception as e:
+        logger.error(f"Failed to create rule: {e}", exc_info=True)
+        raise
+
+
+def update_rule(rule_id: str, rule_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Update an existing rule.
+
+    Args:
+        rule_id: ID of rule to update
+        rule_data: Updated rule configuration
+
+    Returns:
+        Updated rule as dictionary
+    """
+    try:
+        from fileflow_config.rule_schema import RuleValidator
+
+        config_mgr = get_config_manager()
+        config = config_mgr.load()
+
+        # Find rule
+        rule = next((r for r in config.rules if r.id == rule_id), None)
+        if not rule:
+            raise ValueError(f"Rule '{rule_id}' not found")
+
+        # Update fields
+        for key, value in rule_data.items():
+            if hasattr(rule, key):
+                setattr(rule, key, value)
+
+        # Validate updated rule
+        valid, errors = RuleValidator.validate_rule(rule, check_filesystem=True)
+        if not valid:
+            raise ValueError(f"Validation errors: {'; '.join(errors)}")
+
+        # Save configuration
+        config_mgr.save(config)
+
+        logger.info(f"Updated rule: {rule.name} ({rule.id})")
+        return rule.model_dump(mode="json")
+
+    except Exception as e:
+        logger.error(f"Failed to update rule: {e}", exc_info=True)
+        raise
+
+
+def delete_rule(rule_id: str) -> Dict[str, Any]:
+    """
+    Delete a rule.
+
+    Args:
+        rule_id: ID of rule to delete
+
+    Returns:
+        Success message
+    """
+    try:
+        config_mgr = get_config_manager()
+        config = config_mgr.load()
+
+        # Find rule
+        rule = next((r for r in config.rules if r.id == rule_id), None)
+        if not rule:
+            raise ValueError(f"Rule '{rule_id}' not found")
+
+        rule_name = rule.name
+
+        # Remove rule
+        config.rules = [r for r in config.rules if r.id != rule_id]
+        config_mgr.save(config)
+
+        logger.info(f"Deleted rule: {rule_name} ({rule_id})")
+        return {"success": True, "message": f"Rule '{rule_name}' deleted"}
+
+    except Exception as e:
+        logger.error(f"Failed to delete rule: {e}", exc_info=True)
+        raise
+
+
+def toggle_rule(rule_id: str, enabled: bool) -> Dict[str, Any]:
+    """
+    Enable or disable a rule.
+
+    Args:
+        rule_id: ID of rule to toggle
+        enabled: True to enable, False to disable
+
+    Returns:
+        Updated rule as dictionary
+    """
+    try:
+        config_mgr = get_config_manager()
+        config = config_mgr.load()
+
+        # Find rule
+        rule = next((r for r in config.rules if r.id == rule_id), None)
+        if not rule:
+            raise ValueError(f"Rule '{rule_id}' not found")
+
+        # Toggle enabled state
+        rule.enabled = enabled
+        config_mgr.save(config)
+
+        action = "enabled" if enabled else "disabled"
+        logger.info(f"Rule '{rule.name}' ({rule.id}) {action}")
+        return rule.model_dump(mode="json")
+
+    except Exception as e:
+        logger.error(f"Failed to toggle rule: {e}", exc_info=True)
+        raise
+
+
 # CLI entry point for Tauri sidecar
 if __name__ == "__main__":
     # Setup logging
@@ -281,6 +431,14 @@ if __name__ == "__main__":
                 result = detect_screenshot_location()
             elif command == "get_operation_history":
                 result = get_operation_history(**args)
+            elif command == "create_rule":
+                result = create_rule(**args)
+            elif command == "update_rule":
+                result = update_rule(**args)
+            elif command == "delete_rule":
+                result = delete_rule(**args)
+            elif command == "toggle_rule":
+                result = toggle_rule(**args)
             else:
                 result = {"error": f"Unknown command: {command}"}
 

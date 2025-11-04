@@ -37,8 +37,8 @@ def setup_logging(
     # Remove existing handlers
     logger.handlers.clear()
 
-    # Console handler
-    console_handler = logging.StreamHandler(sys.stdout)
+    # Console handler (use stderr to keep stdout clean for JSON output)
+    console_handler = logging.StreamHandler(sys.stderr)
     console_handler.setLevel(getattr(logging, log_level.upper()))
     console_formatter = logging.Formatter(format_string)
     console_handler.setFormatter(console_formatter)

@@ -11,15 +11,14 @@ poetry install
 ## Usage
 
 ```bash
-# Run dry-run scan
-poetry run fileflow scan --dry-run
-
-# Execute file operations
-poetry run fileflow scan --execute
+# Scan and organize files (executes immediately)
+poetry run fileflow scan
 
 # Detect screenshot location
 poetry run fileflow detect-screenshots
 ```
+
+**Note**: The CLI currently executes operations immediately. Configuration is loaded from `~/.config/fileflow/fileflow.toml` (auto-created on first run).
 
 ## Modules
 

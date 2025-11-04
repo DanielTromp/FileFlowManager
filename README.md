@@ -202,10 +202,15 @@ pnpm install
 
 ### Development
 
-**Run CLI** (currently functional):
+**Run CLI** (fully functional):
 ```bash
 cd backend
-poetry run fileflow scan --dry-run
+
+# Scan and organize files (executes immediately)
+poetry run fileflow scan
+
+# Detect screenshot location
+poetry run fileflow detect-screenshots
 ```
 
 **Run GUI** (requires Tauri IPC implementation):

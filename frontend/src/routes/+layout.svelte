@@ -1,8 +1,7 @@
 <script lang="ts">
-  import '../app.css';
-  import { onMount } from 'svelte';
+  import type { Writable } from 'svelte/store';
 
-  let currentRoute = 'dashboard';
+  export let currentRoute: Writable<string>;
 
   const routes = [
     { id: 'dashboard', name: 'Dashboard', icon: '📊' },
@@ -11,19 +10,8 @@
     { id: 'old-files', name: 'Old Files', icon: '🕒' },
   ];
 
-  onMount(() => {
-    // Detect current route from URL
-    if (typeof window !== 'undefined') {
-      const path = window.location.pathname;
-      const route = routes.find((r) => path.includes(r.id));
-      if (route) currentRoute = route.id;
-    }
-  });
-
   function navigateTo(routeId: string) {
-    currentRoute = routeId;
-    // In a real SvelteKit app, we'd use goto() from $app/navigation
-    // For now, this is a placeholder
+    currentRoute.set(routeId);
   }
 </script>
 
@@ -40,7 +28,7 @@
         {#each routes as route}
           <li>
             <button
-              class="flex items-center gap-3 {currentRoute === route.id ? 'active' : ''}"
+              class="flex items-center gap-3 {$currentRoute === route.id ? 'active' : ''}"
               on:click={() => navigateTo(route.id)}
             >
               <span class="text-xl">{route.icon}</span>

@@ -139,30 +139,30 @@ This is a **web application architecture** project:
 
 ### Backend Implementation for User Story 2
 
-- [ ] T052 [P] [US2] Implement glob pattern matching in backend/fileflow_core/file_scanner.py (fnmatch support for *.ext patterns)
-- [ ] T053 [P] [US2] Add exclude pattern support in backend/fileflow_core/rule_engine.py (negative pattern matching)
-- [ ] T054 [P] [US2] Implement environment variable expansion in backend/fileflow_config/config_manager.py (${DESKTOP}, ${DOWNLOADS}, ${HOME})
-- [ ] T055 [P] [US2] Add template variable support in backend/fileflow_core/date_organizer.py ({year}, {month}, {day}, {name})
-- [ ] T056 [US2] Implement rule priority ordering in backend/fileflow_core/rule_engine.py (lowest number first, skip double-processing)
-- [ ] T057 [US2] Add rule validation in backend/fileflow_config/rule_schema.py (source dirs exist, destination writable, unique name)
+- [x] T052 [P] [US2] Implement glob pattern matching in backend/fileflow_core/file_scanner.py (fnmatch support for *.ext patterns)
+- [x] T053 [P] [US2] Add exclude pattern support in backend/fileflow_core/rule_engine.py (negative pattern matching)
+- [x] T054 [P] [US2] Implement environment variable expansion in backend/fileflow_config/config_manager.py (${DESKTOP}, ${DOWNLOADS}, ${HOME})
+- [x] T055 [P] [US2] Add template variable support in backend/fileflow_core/date_organizer.py ({year}, {month}, {day}, {name})
+- [x] T056 [US2] Implement rule priority ordering in backend/fileflow_core/rule_engine.py (lowest number first, skip double-processing)
+- [x] T057 [US2] Add rule validation in backend/fileflow_config/rule_schema.py (source dirs exist, destination writable, unique name)
 
 ### CLI Implementation for User Story 2
 
-- [ ] T058 [US2] Implement `fileflow rules list` command in backend/fileflow_cli/commands.py
-- [ ] T059 [P] [US2] Implement `fileflow rules show RULE_ID` command in backend/fileflow_cli/commands.py
-- [ ] T060 [US2] Implement `fileflow rules create` interactive wizard in backend/fileflow_cli/commands.py
-- [ ] T061 [P] [US2] Implement `fileflow rules update RULE_ID` command in backend/fileflow_cli/commands.py
-- [ ] T062 [P] [US2] Implement `fileflow rules delete RULE_ID` command in backend/fileflow_cli/commands.py
-- [ ] T063 [P] [US2] Implement `fileflow rules enable/disable RULE_ID` commands in backend/fileflow_cli/commands.py
+- [x] T058 [US2] Implement `fileflow rules list` command in backend/fileflow_cli/commands.py
+- [x] T059 [P] [US2] Implement `fileflow rules show RULE_ID` command in backend/fileflow_cli/commands.py
+- [x] T060 [US2] Implement `fileflow rules create` interactive wizard in backend/fileflow_cli/commands.py
+- [x] T061 [P] [US2] Implement `fileflow rules update RULE_ID` command in backend/fileflow_cli/commands.py
+- [x] T062 [P] [US2] Implement `fileflow rules delete RULE_ID` command in backend/fileflow_cli/commands.py
+- [x] T063 [P] [US2] Implement `fileflow rules enable/disable RULE_ID` commands in backend/fileflow_cli/commands.py
 
 ### GUI Implementation for User Story 2
 
 - [ ] T064 [US2] Create Rules Configuration tab in frontend/src/routes/Rules.svelte
-- [ ] T065 [P] [US2] Implement get_rules Tauri command handler in backend/fileflow_api/tauri_commands.py
-- [ ] T066 [P] [US2] Implement create_rule Tauri command handler in backend/fileflow_api/tauri_commands.py
-- [ ] T067 [P] [US2] Implement update_rule Tauri command handler in backend/fileflow_api/tauri_commands.py
-- [ ] T068 [P] [US2] Implement delete_rule Tauri command handler in backend/fileflow_api/tauri_commands.py
-- [ ] T069 [P] [US2] Implement toggle_rule Tauri command handler in backend/fileflow_api/tauri_commands.py
+- [x] T065 [P] [US2] Implement get_rules Tauri command handler in backend/fileflow_api/tauri_commands.py
+- [x] T066 [P] [US2] Implement create_rule Tauri command handler in backend/fileflow_api/tauri_commands.py
+- [x] T067 [P] [US2] Implement update_rule Tauri command handler in backend/fileflow_api/tauri_commands.py
+- [x] T068 [P] [US2] Implement delete_rule Tauri command handler in backend/fileflow_api/tauri_commands.py
+- [x] T069 [P] [US2] Implement toggle_rule Tauri command handler in backend/fileflow_api/tauri_commands.py
 - [ ] T070 [US2] Create RuleCard component in frontend/src/lib/components/RuleCard.svelte (display rule with toggle)
 - [ ] T071 [US2] Create RuleEditor dialog component in frontend/src/lib/components/RuleEditor.svelte (create/edit form)
 - [ ] T072 [US2] Add rule list display in frontend/src/routes/Rules.svelte (sorted by priority)

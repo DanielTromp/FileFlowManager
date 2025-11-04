@@ -31,11 +31,15 @@
   async function handleDryRunScan() {
     scanActions.startScan();
     try {
+      console.log('Starting scan with dry_run=true');
       const result = await scanFiles({ dry_run: true });
+      console.log('Scan result:', result);
       scanActions.completeScan(result);
       lastScanTime = new Date().toLocaleString();
     } catch (error) {
-      scanActions.failScan(error instanceof Error ? error.message : 'Scan failed');
+      console.error('Scan error:', error);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      scanActions.failScan(`Scan failed: ${errorMsg}`);
     }
   }
 
