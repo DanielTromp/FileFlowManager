@@ -157,28 +157,28 @@ This is a **web application architecture** project:
 
 ### GUI Implementation for User Story 2
 
-- [ ] T064 [US2] Create Rules Configuration tab in frontend/src/routes/Rules.svelte
+- [x] T064 [US2] Create Rules Configuration tab in frontend/src/routes/Rules.svelte
 - [x] T065 [P] [US2] Implement get_rules Tauri command handler in backend/fileflow_api/tauri_commands.py
 - [x] T066 [P] [US2] Implement create_rule Tauri command handler in backend/fileflow_api/tauri_commands.py
 - [x] T067 [P] [US2] Implement update_rule Tauri command handler in backend/fileflow_api/tauri_commands.py
 - [x] T068 [P] [US2] Implement delete_rule Tauri command handler in backend/fileflow_api/tauri_commands.py
 - [x] T069 [P] [US2] Implement toggle_rule Tauri command handler in backend/fileflow_api/tauri_commands.py
-- [ ] T070 [US2] Create RuleCard component in frontend/src/lib/components/RuleCard.svelte (display rule with toggle)
-- [ ] T071 [US2] Create RuleEditor dialog component in frontend/src/lib/components/RuleEditor.svelte (create/edit form)
-- [ ] T072 [US2] Add rule list display in frontend/src/routes/Rules.svelte (sorted by priority)
-- [ ] T073 [US2] Add "Add New Rule" button and dialog in frontend/src/routes/Rules.svelte
-- [ ] T074 [US2] Add inline rule editing in frontend/src/routes/Rules.svelte (edit button → RuleEditor dialog)
-- [ ] T075 [US2] Add rule deletion with confirmation in frontend/src/routes/Rules.svelte
+- [x] T070 [US2] Create RuleCard component in frontend/src/lib/components/RuleCard.svelte (display rule with toggle) - Integrated into Rules.svelte
+- [x] T071 [US2] Create RuleEditor dialog component in frontend/src/lib/components/RuleEditor.svelte (create/edit form)
+- [x] T072 [US2] Add rule list display in frontend/src/routes/Rules.svelte (sorted by priority)
+- [x] T073 [US2] Add "Add New Rule" button and dialog in frontend/src/routes/Rules.svelte
+- [x] T074 [US2] Add inline rule editing in frontend/src/routes/Rules.svelte (edit button → RuleEditor dialog)
+- [x] T075 [US2] Add rule deletion with confirmation in frontend/src/routes/Rules.svelte
 
 ### Integration for User Story 2
 
-- [ ] T076 [US2] Add variable hints in RuleEditor in frontend/src/lib/components/RuleEditor.svelte ({year}, ${DESKTOP}, etc.)
-- [ ] T077 [US2] Add real-time rule validation in frontend/src/lib/components/RuleEditor.svelte (show errors before save)
-- [ ] T078 [US2] Wire up Rules tab to backend commands in frontend/src/routes/Rules.svelte
-- [ ] T079 [US2] Add rule enable/disable toggle in frontend/src/lib/components/RuleCard.svelte
-- [ ] T080 [US2] Validate custom rule creation end-to-end (CLI interactive → save → scan, GUI editor → save → scan)
+- [x] T076 [US2] Add variable hints in RuleEditor in frontend/src/lib/components/RuleEditor.svelte ({year}, ${DESKTOP}, etc.)
+- [x] T077 [US2] Add real-time rule validation in frontend/src/lib/components/RuleEditor.svelte (show errors before save)
+- [x] T078 [US2] Wire up Rules tab to backend commands in frontend/src/routes/Rules.svelte
+- [x] T079 [US2] Add rule enable/disable toggle in frontend/src/lib/components/RuleCard.svelte
+- [x] T080 [US2] Validate custom rule creation end-to-end (CLI interactive → save → scan, GUI editor → save → scan)
 
-**Checkpoint**: User Story 2 (Custom Rule Creation) is fully functional - users can create unlimited rules via CLI and GUI
+**Checkpoint**: ✅ User Story 2 (Custom Rule Creation) is fully functional - users can create unlimited rules via CLI and GUI
 
 ---
 

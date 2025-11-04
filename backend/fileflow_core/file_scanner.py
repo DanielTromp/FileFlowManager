@@ -175,7 +175,7 @@ class FileScanner:
         threshold_mb: int = 100,
         progress_callback: Optional[Callable[[str], None]] = None,
     ) -> List[FileMetadata]:
-        """Find files larger than threshold."""
+        """Find files larger than threshold, sorted by size (largest first)."""
         threshold_bytes = threshold_mb * 1024 * 1024
 
         all_files = self.scan_directories_parallel(
@@ -184,7 +184,12 @@ class FileScanner:
             progress_callback=progress_callback,
         )
 
-        return [f for f in all_files if f.size_bytes >= threshold_bytes]
+        large_files = [f for f in all_files if f.size_bytes >= threshold_bytes]
+
+        # Sort by size, largest first
+        large_files.sort(key=lambda f: f.size_bytes, reverse=True)
+
+        return large_files
 
     def find_old_files(
         self,

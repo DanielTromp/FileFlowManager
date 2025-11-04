@@ -3,10 +3,13 @@
   import { ask } from '@tauri-apps/api/dialog';
   import { getRules, toggleRule, deleteRule } from '../lib/api';
   import type { Rule } from '../lib/types';
+  import RuleEditor from '../lib/components/RuleEditor.svelte';
 
   let rules: Rule[] = [];
   let loading = false;
   let error: string | null = null;
+  let showEditor = false;
+  let editingRule: Rule | null = null;
 
   onMount(async () => {
     await loadRules();
@@ -64,8 +67,24 @@
   }
 
   function handleEdit(rule: Rule) {
-    // TODO: Implement rule editor dialog
-    alert(`Edit functionality for rule "${rule.name}" is not yet implemented.\n\nYou can use the CLI to edit rules:\n  fileflow rules update ${rule.id}`);
+    editingRule = rule;
+    showEditor = true;
+  }
+
+  function handleAddNew() {
+    editingRule = null;
+    showEditor = true;
+  }
+
+  async function handleEditorSave() {
+    showEditor = false;
+    editingRule = null;
+    await loadRules();
+  }
+
+  function handleEditorCancel() {
+    showEditor = false;
+    editingRule = null;
   }
 </script>
 
@@ -76,7 +95,7 @@
       <h1 class="text-3xl font-bold">Rules Configuration</h1>
       <p class="text-base-content/60 mt-1">Manage file organization rules</p>
     </div>
-    <button class="btn btn-primary">
+    <button class="btn btn-primary" on:click={handleAddNew}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         class="h-5 w-5 mr-2"
@@ -142,7 +161,7 @@
         <p class="text-base-content/60 mt-2">
           Get started by creating your first file organization rule
         </p>
-        <button class="btn btn-primary mt-4">Create First Rule</button>
+        <button class="btn btn-primary mt-4" on:click={handleAddNew}>Create First Rule</button>
       </div>
     </div>
   {:else}
@@ -278,3 +297,11 @@
     </div>
   {/if}
 </div>
+
+<!-- Rule Editor Dialog -->
+<RuleEditor
+  isOpen={showEditor}
+  rule={editingRule}
+  onSave={handleEditorSave}
+  onCancel={handleEditorCancel}
+/>

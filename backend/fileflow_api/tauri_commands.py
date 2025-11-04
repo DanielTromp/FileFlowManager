@@ -275,12 +275,16 @@ def create_rule(rule_data: Dict[str, Any]) -> Dict[str, Any]:
         config_mgr = get_config_manager()
         config = config_mgr.load()
 
-        # Create rule from data
-        new_rule = Rule(**rule_data)
+        # Generate rule ID if not provided
+        if 'id' not in rule_data:
+            rule_data['id'] = RuleValidator.sanitize_rule_id(rule_data['name'])
 
         # Check if rule ID already exists
-        if any(r.id == new_rule.id for r in config.rules):
-            raise ValueError(f"Rule with ID '{new_rule.id}' already exists")
+        if any(r.id == rule_data['id'] for r in config.rules):
+            raise ValueError(f"Rule with ID '{rule_data['id']}' already exists")
+
+        # Create rule from data
+        new_rule = Rule(**rule_data)
 
         # Validate rule
         valid, errors = RuleValidator.validate_rule(new_rule, check_filesystem=True)
