@@ -426,5 +426,50 @@ def rules_disable(rule_id: Annotated[str, typer.Argument(help="Rule ID to disabl
     console.print(f"[green]✓ Rule '{rule.name}' disabled![/green]")
 
 
+@app.command(name="find-large")
+def find_large() -> None:
+    """Find files larger than 100MB."""
+    from pathlib import Path
+    from fileflow_core.file_scanner import FileScanner
+
+    console.print("\n[bold]Finding files larger than 100 MB...[/bold]\n")
+
+    # Get monitored directories from config
+    config_mgr = get_config_manager()
+    config = config_mgr.load()
+    monitored_dirs = [Path(config_mgr.expand_env_vars(d)) for d in config.paths.monitored_directories]
+
+    # Scan for large files
+    scanner = FileScanner()
+    large_files = scanner.find_large_files(directories=monitored_dirs, threshold_mb=100)
+
+    if not large_files:
+        console.print("[yellow]No files found larger than 100 MB.[/yellow]")
+        return
+
+    # Display results
+    from rich.table import Table
+
+    table = Table(title="Large Files (> 100 MB)")
+    table.add_column("File", style="cyan")
+    table.add_column("Size", justify="right", style="yellow")
+    table.add_column("Path", style="dim")
+
+    for file_meta in large_files[:20]:  # Limit to 20 files
+        size_mb = file_meta.size_bytes / (1024 * 1024)
+        size_str = f"{size_mb:.2f} MB" if size_mb < 1024 else f"{size_mb/1024:.2f} GB"
+        table.add_row(
+            file_meta.filename,
+            size_str,
+            str(Path(file_meta.path).parent),
+        )
+
+    console.print(table)
+
+    # Summary
+    total_size = sum(f.size_bytes for f in large_files) / (1024 * 1024)
+    console.print(f"\n[bold]Found {len(large_files)} files, total size: {total_size:.2f} MB[/bold]")
+
+
 if __name__ == "__main__":
     app()

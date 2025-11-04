@@ -7,7 +7,7 @@ Handles safe file moves and deletions with metadata preservation.
 import os
 import shutil
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 class FileOperations:
@@ -153,6 +153,67 @@ class FileOperations:
 
         except Exception as e:
             return False, f"Error copying file: {e}"
+
+    @staticmethod
+    def delete_files_batch(
+        file_paths: List[Path],
+        confirm: bool = True,
+    ) -> Dict[str, any]:
+        """
+        Delete multiple files safely with confirmation requirement.
+
+        Args:
+            file_paths: List of file paths to delete
+            confirm: If True, requires explicit confirmation (safety check)
+
+        Returns:
+            Dictionary with:
+                - deleted_count: Number of files successfully deleted
+                - failed_count: Number of files that failed to delete
+                - errors: List of error messages
+                - space_freed_mb: Total space freed in MB
+        """
+        if not confirm:
+            return {
+                "deleted_count": 0,
+                "failed_count": 0,
+                "errors": ["Confirmation required for batch deletion"],
+                "space_freed_mb": 0,
+            }
+
+        deleted_count = 0
+        failed_count = 0
+        errors = []
+        space_freed_bytes = 0
+
+        for file_path in file_paths:
+            try:
+                # Get file size before deletion
+                if file_path.exists():
+                    file_size = file_path.stat().st_size
+                    space_freed_bytes += file_size
+
+                success, error_msg = FileOperations.delete_file(file_path)
+
+                if success:
+                    deleted_count += 1
+                else:
+                    failed_count += 1
+                    if error_msg:
+                        errors.append(f"{file_path.name}: {error_msg}")
+
+            except Exception as e:
+                failed_count += 1
+                errors.append(f"{file_path.name}: {str(e)}")
+
+        space_freed_mb = space_freed_bytes / (1024 * 1024)
+
+        return {
+            "deleted_count": deleted_count,
+            "failed_count": failed_count,
+            "errors": errors,
+            "space_freed_mb": round(space_freed_mb, 2),
+        }
 
     @staticmethod
     def get_safe_filename(filename: str, max_length: int = 255) -> str:

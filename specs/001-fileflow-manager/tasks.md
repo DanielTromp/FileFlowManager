@@ -196,35 +196,35 @@ This is a **web application architecture** project:
 
 ### Backend Implementation for User Story 3
 
-- [ ] T081 [P] [US3] Add file size detection in backend/fileflow_core/file_scanner.py (size_bytes field)
-- [ ] T082 [P] [US3] Implement large file filtering in backend/fileflow_core/file_scanner.py (threshold-based filtering)
-- [ ] T083 [P] [US3] Add sorting by size in backend/fileflow_core/file_scanner.py (largest first)
-- [ ] T084 [P] [US3] Implement batch file deletion in backend/fileflow_core/file_operations.py (with confirmation requirement)
+- [x] T081 [P] [US3] Add file size detection in backend/fileflow_core/file_scanner.py (size_bytes field)
+- [x] T082 [P] [US3] Implement large file filtering in backend/fileflow_core/file_scanner.py (threshold-based filtering)
+- [x] T083 [P] [US3] Add sorting by size in backend/fileflow_core/file_scanner.py (largest first)
+- [x] T084 [P] [US3] Implement batch file deletion in backend/fileflow_core/file_operations.py (with confirmation requirement)
 
 ### CLI Implementation for User Story 3
 
-- [ ] T085 [US3] Implement `fileflow files large` command in backend/fileflow_cli/commands.py (--threshold, --sort-by, --limit)
-- [ ] T086 [US3] Add interactive deletion mode in backend/fileflow_cli/commands.py (--delete flag with selection)
-- [ ] T087 [P] [US3] Add total count and size summary in backend/fileflow_cli/commands.py (display totals)
+- [x] T085 [US3] Implement `fileflow files large` command in backend/fileflow_cli/commands.py (--threshold, --sort-by, --limit)
+- [x] T086 [US3] Add interactive deletion mode in backend/fileflow_cli/commands.py (--delete flag with selection)
+- [x] T087 [P] [US3] Add total count and size summary in backend/fileflow_cli/commands.py (display totals)
 
 ### GUI Implementation for User Story 3
 
-- [ ] T088 [US3] Create Large Files tab in frontend/src/routes/LargeFiles.svelte
-- [ ] T089 [P] [US3] Implement get_large_files Tauri command handler in backend/fileflow_api/tauri_commands.py
-- [ ] T090 [P] [US3] Implement delete_files Tauri command handler in backend/fileflow_api/tauri_commands.py
-- [ ] T091 [US3] Add threshold slider in frontend/src/routes/LargeFiles.svelte (default 100MB)
-- [ ] T092 [US3] Add file list with checkboxes in frontend/src/routes/LargeFiles.svelte (using FileList.svelte component)
-- [ ] T093 [US3] Add "Delete Selected" button with confirmation in frontend/src/routes/LargeFiles.svelte
-- [ ] T094 [US3] Add space-to-be-freed calculation in frontend/src/routes/LargeFiles.svelte (sum of selected files)
-- [ ] T095 [US3] Wire up Large Files tab to backend commands in frontend/src/routes/LargeFiles.svelte
+- [x] T088 [US3] Create Large Files tab in frontend/src/routes/LargeFiles.svelte
+- [x] T089 [P] [US3] Implement get_large_files Tauri command handler in backend/fileflow_api/tauri_commands.py
+- [x] T090 [P] [US3] Implement delete_files Tauri command handler in backend/fileflow_api/tauri_commands.py
+- [x] T091 [US3] Add threshold slider in frontend/src/routes/LargeFiles.svelte (default 100MB)
+- [x] T092 [US3] Add file list with checkboxes in frontend/src/routes/LargeFiles.svelte (using FileList.svelte component)
+- [x] T093 [US3] Add "Delete Selected" button with confirmation in frontend/src/routes/LargeFiles.svelte
+- [x] T094 [US3] Add space-to-be-freed calculation in frontend/src/routes/LargeFiles.svelte (sum of selected files)
+- [x] T095 [US3] Wire up Large Files tab to backend commands in frontend/src/routes/LargeFiles.svelte
 
 ### Integration for User Story 3
 
-- [ ] T096 [US3] Add real-time threshold updates in frontend/src/routes/LargeFiles.svelte (re-fetch on slider change)
-- [ ] T097 [US3] Add deletion confirmation dialog in frontend/src/routes/LargeFiles.svelte (using ConfirmDialog.svelte)
-- [ ] T098 [US3] Validate large file cleanup end-to-end (CLI --delete, GUI delete with confirmation)
+- [x] T096 [US3] Add real-time threshold updates in frontend/src/routes/LargeFiles.svelte (re-fetch on slider change)
+- [x] T097 [US3] Add deletion confirmation dialog in frontend/src/routes/LargeFiles.svelte (using ConfirmDialog.svelte)
+- [x] T098 [US3] Validate large file cleanup end-to-end (CLI --delete, GUI delete with confirmation)
 
-**Checkpoint**: User Story 3 (Large File Cleanup) is fully functional - users can find and delete large files via CLI and GUI
+**✅ Checkpoint**: User Story 3 (Large File Cleanup) is fully functional - users can find and delete large files via CLI and GUI
 
 ---
 

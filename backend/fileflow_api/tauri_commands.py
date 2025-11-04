@@ -412,6 +412,89 @@ def toggle_rule(rule_id: str, enabled: bool) -> Dict[str, Any]:
         raise
 
 
+def get_large_files(
+    threshold_mb: int = 100,
+    limit: Optional[int] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Find files larger than threshold.
+
+    Args:
+        threshold_mb: Size threshold in MB (default: 100)
+        limit: Maximum number of files to return
+
+    Returns:
+        List of FileMetadata dictionaries sorted by size (largest first)
+    """
+    try:
+        from fileflow_core.file_scanner import FileScanner
+
+        config_mgr = get_config_manager()
+        config = config_mgr.load()
+
+        # Get monitored directories
+        monitored_dirs = [Path(config_mgr.expand_env_vars(d)) for d in config.paths.monitored_directories]
+
+        # Scan for large files
+        scanner = FileScanner()
+        large_files = scanner.find_large_files(
+            directories=monitored_dirs,
+            threshold_mb=threshold_mb,
+        )
+
+        # Apply limit if specified
+        if limit and limit > 0:
+            large_files = large_files[:limit]
+
+        logger.info(
+            f"Found {len(large_files)} files larger than {threshold_mb} MB"
+        )
+
+        return [file.model_dump(mode="json") for file in large_files]
+
+    except Exception as e:
+        logger.error(f"Failed to get large files: {e}", exc_info=True)
+        raise
+
+
+def delete_files(
+    file_paths: List[str],
+    confirm_deletions: bool = True,
+) -> Dict[str, Any]:
+    """
+    Delete multiple files with confirmation.
+
+    Args:
+        file_paths: List of file paths to delete
+        confirm_deletions: Must be True to execute deletions
+
+    Returns:
+        Dictionary with deletion results (deleted_count, failed_count, errors, space_freed_mb)
+    """
+    try:
+        from fileflow_core.file_operations import FileOperations
+
+        if not confirm_deletions:
+            raise ValueError("Deletions require confirm_deletions=True")
+
+        # Convert to Path objects
+        paths = [Path(p) for p in file_paths]
+
+        # Perform batch deletion
+        result = FileOperations.delete_files_batch(paths, confirm=True)
+
+        logger.info(
+            f"Deleted {result['deleted_count']} files, "
+            f"freed {result['space_freed_mb']:.2f} MB"
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Failed to delete files: {e}", exc_info=True)
+        raise
+
+
 # CLI entry point for Tauri sidecar
 if __name__ == "__main__":
     # Setup logging
@@ -443,6 +526,10 @@ if __name__ == "__main__":
                 result = delete_rule(**args)
             elif command == "toggle_rule":
                 result = toggle_rule(**args)
+            elif command == "get_large_files":
+                result = get_large_files(**args)
+            elif command == "delete_files":
+                result = delete_files(**args)
             else:
                 result = {"error": f"Unknown command: {command}"}
 
