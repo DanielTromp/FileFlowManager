@@ -1,0 +1,74 @@
+[tool.poetry]
+name = "fileflow"
+version = "0.1.0"
+description = "Intelligent automated file organization system for macOS"
+authors = ["FileFlow Team"]
+readme = "README.md"
+packages = [
+    { include = "fileflow_core" },
+    { include = "fileflow_config" },
+    { include = "fileflow_storage" },
+    { include = "fileflow_cli" },
+    { include = "fileflow_api" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+typer = {extras = ["all"], version = "^0.9.0"}
+pydantic = "^2.0"
+tomli = {version = "^2.0", python = "<3.11"}
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+pytest-cov = "^4.1.0"
+black = "^23.7.0"
+ruff = "^0.0.286"
+mypy = "^1.5.0"
+
+[tool.poetry.scripts]
+fileflow = "fileflow_cli.__main__:app"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py310', 'py311']
+include = '\.pyi?$'
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+strict_equality = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=fileflow_core --cov=fileflow_config --cov=fileflow_storage --cov=fileflow_cli --cov=fileflow_api"

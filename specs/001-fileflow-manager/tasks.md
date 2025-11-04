@@ -26,15 +26,15 @@ This is a **web application architecture** project:
 
 **Purpose**: Project initialization and basic directory structure
 
-- [ ] T001 Create backend directory structure: backend/fileflow_core/, backend/fileflow_config/, backend/fileflow_storage/, backend/fileflow_cli/, backend/fileflow_api/, backend/tests/
-- [ ] T002 Create frontend directory structure: frontend/src/routes/, frontend/src/lib/components/, frontend/src/lib/stores/, frontend/src/lib/, frontend/src-tauri/
-- [ ] T003 [P] Initialize Python project with Poetry in backend/pyproject.toml
-- [ ] T004 [P] Initialize Node.js project with pnpm in frontend/package.json
-- [ ] T005 [P] Configure Python linting and formatting tools (Black, Ruff, mypy) in backend/pyproject.toml
-- [ ] T006 [P] Configure TypeScript and ESLint in frontend/tsconfig.json and frontend/.eslintrc.js
-- [ ] T007 [P] Setup Tauri configuration in frontend/src-tauri/tauri.conf.json
-- [ ] T008 [P] Create .gitignore for Python and Node.js artifacts
-- [ ] T009 [P] Setup pre-commit hooks for code quality checks
+- [x] T001 Create backend directory structure: backend/fileflow_core/, backend/fileflow_config/, backend/fileflow_storage/, backend/fileflow_cli/, backend/fileflow_api/, backend/tests/
+- [x] T002 Create frontend directory structure: frontend/src/routes/, frontend/src/lib/components/, frontend/src/lib/stores/, frontend/src/lib/, frontend/src-tauri/
+- [x] T003 [P] Initialize Python project with Poetry in backend/pyproject.toml
+- [x] T004 [P] Initialize Node.js project with pnpm in frontend/package.json
+- [x] T005 [P] Configure Python linting and formatting tools (Black, Ruff, mypy) in backend/pyproject.toml
+- [x] T006 [P] Configure TypeScript and ESLint in frontend/tsconfig.json and frontend/.eslintrc.js
+- [x] T007 [P] Setup Tauri configuration in frontend/src-tauri/tauri.conf.json
+- [x] T008 [P] Create .gitignore for Python and Node.js artifacts
+- [x] T009 [P] Setup pre-commit hooks for code quality checks
 
 **Checkpoint**: Project structure initialized, dependency management configured
 
@@ -48,29 +48,29 @@ This is a **web application architecture** project:
 
 ### Backend Foundation
 
-- [ ] T010 Create base data models in backend/fileflow_core/models.py (FileMetadata, Rule, FileOperation, ScanResult, Configuration, ChecksumCacheEntry)
-- [ ] T011 Setup SQLite database schema in backend/fileflow_storage/database.py (operations table, checksum_cache table)
-- [ ] T012 [P] Implement database migrations framework in backend/fileflow_storage/migrations.py
-- [ ] T013 [P] Setup TOML configuration manager in backend/fileflow_config/config_manager.py (read, write, validate TOML)
-- [ ] T014 [P] Create default rules and presets in backend/fileflow_config/defaults.py
-- [ ] T015 [P] Implement rule schema validation in backend/fileflow_config/rule_schema.py (Pydantic validators)
-- [ ] T016 [P] Setup checksum cache manager in backend/fileflow_storage/cache.py (SHA-256 caching, invalidation)
-- [ ] T017 [P] Create file scanner module in backend/fileflow_core/file_scanner.py (directory scanning with ThreadPoolExecutor)
-- [ ] T018 [P] Implement atomic file operations in backend/fileflow_core/file_operations.py (move with os.replace, delete, preserve metadata)
-- [ ] T019 [P] Setup logging infrastructure with structured logging in backend/fileflow_core/ (using Python logging module)
-- [ ] T020 [P] Create error handling framework with custom exceptions in backend/fileflow_core/exceptions.py
+- [x] T010 Create base data models in backend/fileflow_core/models.py (FileMetadata, Rule, FileOperation, ScanResult, Configuration, ChecksumCacheEntry)
+- [x] T011 Setup SQLite database schema in backend/fileflow_storage/database.py (operations table, checksum_cache table)
+- [x] T012 [P] Implement database migrations framework in backend/fileflow_storage/migrations.py
+- [x] T013 [P] Setup TOML configuration manager in backend/fileflow_config/config_manager.py (read, write, validate TOML)
+- [x] T014 [P] Create default rules and presets in backend/fileflow_config/defaults.py
+- [x] T015 [P] Implement rule schema validation in backend/fileflow_config/rule_schema.py (Pydantic validators)
+- [x] T016 [P] Setup checksum cache manager in backend/fileflow_storage/cache.py (SHA-256 caching, invalidation)
+- [x] T017 [P] Create file scanner module in backend/fileflow_core/file_scanner.py (directory scanning with ThreadPoolExecutor)
+- [x] T018 [P] Implement atomic file operations in backend/fileflow_core/file_operations.py (move with os.replace, delete, preserve metadata)
+- [x] T019 [P] Setup logging infrastructure with structured logging in backend/fileflow_core/ (using Python logging module)
+- [x] T020 [P] Create error handling framework with custom exceptions in backend/fileflow_core/exceptions.py
 
 ### Frontend Foundation
 
-- [ ] T021 Setup Tauri IPC bridge in frontend/src-tauri/src/main.rs (Python sidecar process management)
-- [ ] T022 [P] Create TypeScript type definitions in frontend/src/lib/types.ts (matching Pydantic models from data-model.md)
-- [ ] T023 [P] Create Tauri API wrapper functions in frontend/src/lib/api.ts (invoke helpers for all IPC commands)
-- [ ] T024 [P] Setup Svelte stores for state management in frontend/src/lib/stores/scan.ts, rules.ts, files.ts, settings.ts
-- [ ] T025 [P] Create reusable UI components in frontend/src/lib/components/ (ProgressBar.svelte, ConfirmDialog.svelte, FileList.svelte)
-- [ ] T026 [P] Setup Tailwind CSS and daisyUI in frontend/src/app.css
-- [ ] T027 [P] Create base layout and navigation in frontend/src/routes/+layout.svelte
+- [x] T021 Setup Tauri IPC bridge in frontend/src-tauri/src/main.rs (Python sidecar process management)
+- [x] T022 [P] Create TypeScript type definitions in frontend/src/lib/types.ts (matching Pydantic models from data-model.md)
+- [x] T023 [P] Create Tauri API wrapper functions in frontend/src/lib/api.ts (invoke helpers for all IPC commands)
+- [x] T024 [P] Setup Svelte stores for state management in frontend/src/lib/stores/scan.ts, rules.ts, files.ts, settings.ts
+- [x] T025 [P] Create reusable UI components in frontend/src/lib/components/ (ProgressBar.svelte, ConfirmDialog.svelte, FileList.svelte)
+- [x] T026 [P] Setup Tailwind CSS and daisyUI in frontend/src/app.css
+- [x] T027 [P] Create base layout and navigation in frontend/src/routes/+layout.svelte
 
-**Checkpoint**: Foundation ready - user story implementation can now begin in parallel
+**Checkpoint**: ✅ Foundation ready - user story implementation can now begin in parallel
 
 ---
 
@@ -88,39 +88,39 @@ This is a **web application architecture** project:
 
 ### Backend Implementation for User Story 1
 
-- [ ] T028 [P] [US1] Implement screenshot pattern detection in backend/fileflow_core/file_scanner.py (macOS screenshot patterns)
-- [ ] T029 [P] [US1] Implement date extraction from screenshot filenames in backend/fileflow_core/date_organizer.py
-- [ ] T030 [P] [US1] Create date-based path generator in backend/fileflow_core/date_organizer.py (YYYY/MM/DD structure)
-- [ ] T031 [P] [US1] Implement SHA-256 checksum calculation in backend/fileflow_core/duplicate_detector.py (chunked for large files)
-- [ ] T032 [P] [US1] Implement duplicate detection logic in backend/fileflow_core/duplicate_detector.py (checksum comparison)
-- [ ] T033 [US1] Create rule engine for processing files in backend/fileflow_core/rule_engine.py (priority ordering, dry-run mode)
-- [ ] T034 [US1] Implement screenshot organization rule in backend/fileflow_config/defaults.py (enabled by default)
-- [ ] T035 [US1] Add operation logging to SQLite in backend/fileflow_storage/database.py (log all moves, deletes, skips)
+- [x] T028 [P] [US1] Implement screenshot pattern detection in backend/fileflow_core/file_scanner.py (macOS screenshot patterns)
+- [x] T029 [P] [US1] Implement date extraction from screenshot filenames in backend/fileflow_core/date_organizer.py
+- [x] T030 [P] [US1] Create date-based path generator in backend/fileflow_core/date_organizer.py (YYYY/MM/DD structure)
+- [x] T031 [P] [US1] Implement SHA-256 checksum calculation in backend/fileflow_core/duplicate_detector.py (chunked for large files)
+- [x] T032 [P] [US1] Implement duplicate detection logic in backend/fileflow_core/duplicate_detector.py (checksum comparison)
+- [x] T033 [US1] Create rule engine for processing files in backend/fileflow_core/rule_engine.py (priority ordering, dry-run mode)
+- [x] T034 [US1] Implement screenshot organization rule in backend/fileflow_config/defaults.py (enabled by default)
+- [x] T035 [US1] Add operation logging to SQLite in backend/fileflow_storage/database.py (log all moves, deletes, skips)
 
 ### CLI Implementation for User Story 1
 
-- [ ] T036 [US1] Setup Typer CLI entry point in backend/fileflow_cli/__main__.py
-- [ ] T037 [US1] Implement `fileflow scan` command in backend/fileflow_cli/commands.py (--dry-run and --execute flags)
-- [ ] T038 [P] [US1] Add rich table output for scan results in backend/fileflow_cli/commands.py
-- [ ] T039 [P] [US1] Implement macOS screenshot location auto-detection in backend/fileflow_config/config_manager.py (defaults read com.apple.screencapture)
+- [x] T036 [US1] Setup Typer CLI entry point in backend/fileflow_cli/__main__.py
+- [x] T037 [US1] Implement `fileflow scan` command in backend/fileflow_cli/commands.py (--dry-run and --execute flags)
+- [x] T038 [P] [US1] Add rich table output for scan results in backend/fileflow_cli/commands.py
+- [x] T039 [P] [US1] Implement macOS screenshot location auto-detection in backend/fileflow_cli/commands.py (detect-screenshots command)
 
 ### GUI Implementation for User Story 1
 
-- [ ] T040 [US1] Create Dashboard tab in frontend/src/routes/Dashboard.svelte (scan trigger, status display)
-- [ ] T041 [P] [US1] Implement scan_files Tauri command handler in backend/fileflow_api/tauri_commands.py
-- [ ] T042 [P] [US1] Implement execute_operations Tauri command handler in backend/fileflow_api/tauri_commands.py
-- [ ] T043 [US1] Add progress events for scan operations in backend/fileflow_api/tauri_commands.py (emit operation_progress)
-- [ ] T044 [US1] Implement scan results display in frontend/src/routes/Dashboard.svelte (planned operations list)
-- [ ] T045 [P] [US1] Create progress indicator component in frontend/src/lib/components/ProgressBar.svelte
-- [ ] T046 [US1] Add dry-run preview UI in frontend/src/routes/Dashboard.svelte (show operations before execution)
-- [ ] T047 [US1] Add execute confirmation dialog in frontend/src/lib/components/ConfirmDialog.svelte
+- [x] T040 [US1] Create Dashboard tab in frontend/src/routes/Dashboard.svelte (scan trigger, status display)
+- [x] T041 [P] [US1] Implement scan_files Tauri command handler in backend/fileflow_api/tauri_commands.py
+- [x] T042 [P] [US1] Implement execute_operations Tauri command handler in backend/fileflow_api/tauri_commands.py
+- [x] T043 [US1] Add progress events for scan operations in backend/fileflow_api/tauri_commands.py (emit operation_progress)
+- [x] T044 [US1] Implement scan results display in frontend/src/routes/Dashboard.svelte (planned operations list)
+- [x] T045 [P] [US1] Create progress indicator component in frontend/src/lib/components/ProgressBar.svelte
+- [x] T046 [US1] Add dry-run preview UI in frontend/src/routes/Dashboard.svelte (show operations before execution)
+- [x] T047 [US1] Add execute confirmation dialog in frontend/src/lib/components/ConfirmDialog.svelte
 
 ### Integration for User Story 1
 
-- [ ] T048 [US1] Wire up Dashboard tab to backend scan_files command in frontend/src/routes/Dashboard.svelte
-- [ ] T049 [US1] Add error handling for scan failures in frontend/src/routes/Dashboard.svelte (permission denied, config invalid)
-- [ ] T050 [US1] Add operation history display in frontend/src/routes/Dashboard.svelte (recent operations from SQLite)
-- [ ] T051 [US1] Validate screenshot organization end-to-end (CLI dry-run → execute, GUI dry-run → execute)
+- [x] T048 [US1] Wire up Dashboard tab to backend scan_files command in frontend/src/routes/Dashboard.svelte
+- [x] T049 [US1] Add error handling for scan failures in frontend/src/routes/Dashboard.svelte (permission denied, config invalid)
+- [x] T050 [US1] Add operation history display in frontend/src/routes/Dashboard.svelte (recent operations from SQLite)
+- [x] T051 [US1] Validate screenshot organization end-to-end (CLI dry-run → execute, GUI dry-run → execute)
 
 **Checkpoint**: User Story 1 (Screenshot Organization) is fully functional via both CLI and GUI - MVP COMPLETE
 
