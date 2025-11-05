@@ -15,6 +15,7 @@ from fileflow_config.config_manager import ConfigManager
 from fileflow_config.defaults import create_default_config_file
 from fileflow_core.logging_config import setup_logging
 from fileflow_core.rule_engine import RuleEngine
+from fileflow_core.models import OperationType
 from fileflow_storage.cache import ChecksumCache
 from fileflow_storage.database import Database
 
@@ -578,7 +579,9 @@ def config_show() -> None:
 
 
 @app.command(name="config-export")
-def config_export(output_path: str) -> None:
+def config_export(
+    output_path: Annotated[str, typer.Argument(help="Path where to save the exported configuration")]
+) -> None:
     """Export configuration to TOML file (T120)."""
     console.print(f"\n[bold]Exporting configuration to {output_path}...[/bold]\n")
 
@@ -594,7 +597,9 @@ def config_export(output_path: str) -> None:
 
 
 @app.command(name="config-import")
-def config_import(input_path: str) -> None:
+def config_import(
+    input_path: Annotated[str, typer.Argument(help="Path to configuration file to import")]
+) -> None:
     """Import configuration from TOML file (T121). Replaces existing configuration."""
     console.print(f"\n[bold]Importing configuration from {input_path} (replace mode)...[/bold]\n")
 
@@ -610,7 +615,9 @@ def config_import(input_path: str) -> None:
 
 
 @app.command(name="config-import-merge")
-def config_import_merge(input_path: str) -> None:
+def config_import_merge(
+    input_path: Annotated[str, typer.Argument(help="Path to configuration file to import")]
+) -> None:
     """Import configuration with merge (keeps existing rules, adds new ones)."""
     console.print(f"\n[bold]Importing configuration from {input_path} (merge mode)...[/bold]\n")
 
@@ -626,7 +633,9 @@ def config_import_merge(input_path: str) -> None:
 
 
 @app.command(name="config-validate")
-def config_validate(config_path: Optional[str] = None) -> None:
+def config_validate(
+    config_path: Annotated[Optional[str], typer.Argument(help="Path to configuration file (optional, validates default if not provided)")] = None
+) -> None:
     """Validate configuration file (T122)."""
     if config_path:
         console.print(f"\n[bold]Validating configuration at {config_path}...[/bold]\n")
@@ -646,6 +655,276 @@ def config_validate(config_path: Optional[str] = None) -> None:
 
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command(name="config-edit")
+def config_edit() -> None:
+    """Open configuration file in default editor (T123)."""
+    import os
+    import shutil
+
+    config_path = DEFAULT_CONFIG_PATH
+
+    if not config_path.exists():
+        console.print("[yellow]Configuration file does not exist. Creating default configuration...[/yellow]")
+        create_default_config_file(str(config_path))
+
+    # Determine editor
+    editor = os.environ.get('EDITOR') or os.environ.get('VISUAL')
+
+    if not editor:
+        # Try to find common editors
+        for candidate in ['nano', 'vim', 'vi', 'emacs']:
+            if shutil.which(candidate):
+                editor = candidate
+                break
+
+    if not editor:
+        console.print(f"[red]No editor found. Please set the EDITOR environment variable.[/red]")
+        console.print(f"\nConfiguration file location: [cyan]{config_path}[/cyan]")
+        console.print(f"\nYou can edit it manually or set EDITOR:")
+        console.print(f"  export EDITOR=nano")
+        console.print(f"  export EDITOR=vim")
+        raise typer.Exit(1)
+
+    console.print(f"[bold]Opening configuration in {editor}...[/bold]\n")
+    console.print(f"File: [cyan]{config_path}[/cyan]\n")
+
+    try:
+        # Open editor
+        result = subprocess.run([editor, str(config_path)])
+
+        if result.returncode == 0:
+            # Validate configuration after editing
+            console.print("\n[bold]Validating edited configuration...[/bold]")
+            config_mgr = ConfigManager(config_path)
+            valid, error_msg = config_mgr.validate()
+
+            if valid:
+                console.print("[green]✓ Configuration is valid[/green]\n")
+            else:
+                console.print(f"[yellow]⚠ Warning: Configuration has errors: {error_msg}[/yellow]")
+                console.print(f"[yellow]  Fix the errors and run: fileflow config-validate[/yellow]\n")
+        else:
+            console.print(f"[yellow]Editor exited with code {result.returncode}[/yellow]\n")
+
+    except FileNotFoundError:
+        console.print(f"[red]Editor '{editor}' not found[/red]")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f"[red]Error opening editor: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command(name="config-reset")
+def config_reset(
+    force: Annotated[bool, typer.Option("--force", help="Skip confirmation prompt")] = False,
+    keep_rules: Annotated[bool, typer.Option("--keep-rules", help="Keep existing rules, reset only settings")] = False
+) -> None:
+    """Reset configuration to defaults (T124)."""
+    config_path = DEFAULT_CONFIG_PATH
+
+    if not config_path.exists():
+        console.print("[yellow]Configuration file does not exist.[/yellow]\n")
+        return
+
+    # Load current config to backup rules if needed
+    current_rules = []
+    if keep_rules:
+        try:
+            config_mgr = get_config_manager()
+            config = config_mgr.load()
+            current_rules = config.rules
+        except Exception:
+            console.print("[yellow]Warning: Could not load current rules[/yellow]")
+
+    # Confirmation
+    if not force:
+        console.print("\n[bold red]⚠ Warning: This will reset your configuration![/bold red]\n")
+        if keep_rules:
+            console.print("  • Settings will be reset to defaults")
+            console.print("  • Custom rules will be preserved")
+        else:
+            console.print("  • All settings will be reset to defaults")
+            console.print("  • All custom rules will be deleted")
+
+        console.print(f"\nConfiguration file: [cyan]{config_path}[/cyan]\n")
+
+        confirm = typer.confirm("Are you sure you want to continue?")
+        if not confirm:
+            console.print("\n[yellow]Reset cancelled[/yellow]\n")
+            raise typer.Exit(0)
+
+    try:
+        # Create backup
+        import shutil
+        from datetime import datetime
+
+        backup_path = config_path.parent / f"fileflow.toml.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        shutil.copy(config_path, backup_path)
+        console.print(f"\n[green]✓ Backup created: {backup_path}[/green]")
+
+        # Reset configuration
+        create_default_config_file(str(config_path))
+        console.print(f"[green]✓ Configuration reset to defaults[/green]")
+
+        # Restore rules if requested
+        if keep_rules and current_rules:
+            config_mgr = get_config_manager()
+            config = config_mgr.load()
+            config.rules = current_rules
+            config_mgr.save(config)
+            console.print(f"[green]✓ Restored {len(current_rules)} custom rules[/green]")
+
+        console.print("\n[bold]Configuration has been reset![/bold]\n")
+
+    except Exception as e:
+        console.print(f"[red]Error resetting configuration: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command(name="history")
+def history(
+    limit: Annotated[int, typer.Option("--limit", "-n", help="Maximum number of operations to show")] = 100,
+    operation_type: Annotated[Optional[str], typer.Option("--operation-type", "-t", help="Filter by operation type (move, delete, skip)")] = None,
+    rule_id: Annotated[Optional[str], typer.Option("--rule-id", "-r", help="Filter by rule ID")] = None,
+    include_dry_runs: Annotated[bool, typer.Option("--include-dry-runs", "-d", help="Include dry-run operations")] = False,
+) -> None:
+    """Show operation history with optional filtering (T149).
+
+    View past file operations including moves, deletions, and skipped files.
+    Filter by operation type, rule, and optionally include dry-run operations.
+
+    Examples:
+        # Show last 50 operations
+        fileflow history --limit 50
+
+        # Show only move operations
+        fileflow history --operation-type move
+
+        # Show operations for a specific rule
+        fileflow history --rule-id screenshot-org
+
+        # Include dry-run operations
+        fileflow history --include-dry-runs
+    """
+    try:
+        # Parse operation type if provided
+        op_type = None
+        if operation_type:
+            try:
+                op_type = OperationType(operation_type.lower())
+            except ValueError:
+                console.print(f"[red]Error: Invalid operation type '{operation_type}'[/red]")
+                console.print("[yellow]Valid types: move, delete, skip[/yellow]")
+                raise typer.Exit(1)
+
+        # Get history from database
+        db = Database(DEFAULT_DB_PATH)
+        operations = db.get_operation_history(
+            limit=limit,
+            operation_type=op_type,
+            rule_id=rule_id,
+            include_dry_runs=include_dry_runs,
+        )
+
+        if not operations:
+            console.print("[yellow]No operations found matching the criteria.[/yellow]")
+            if not include_dry_runs:
+                console.print("[dim]Tip: Use --include-dry-runs to see dry-run operations[/dim]")
+            return
+
+        # Build table
+        table = Table(title=f"Operation History (showing {len(operations)} of {len(operations)})")
+        table.add_column("Date/Time", style="cyan", no_wrap=True)
+        table.add_column("Operation", style="magenta")
+        table.add_column("Source", style="blue")
+        table.add_column("Destination", style="green")
+        table.add_column("Rule", style="yellow")
+        table.add_column("Size", justify="right")
+        table.add_column("Status", justify="center")
+
+        # Add rows
+        for op in operations:
+            # Format timestamp
+            timestamp = op.timestamp.strftime("%Y-%m-%d %H:%M:%S") if op.timestamp else "N/A"
+
+            # Format operation type with emoji
+            op_icons = {
+                OperationType.MOVE: "→",
+                OperationType.DELETE: "🗑",
+                OperationType.SKIP: "⊘",
+            }
+            op_display = f"{op_icons.get(op.operation_type, '?')} {op.operation_type.value}"
+
+            # Format file paths
+            source = Path(op.source_path).name if op.source_path else "N/A"
+            destination = str(Path(op.destination_path).name) if op.destination_path else "-"
+
+            # Format file size
+            if op.file_size:
+                if op.file_size < 1024:
+                    size = f"{op.file_size}B"
+                elif op.file_size < 1024 * 1024:
+                    size = f"{op.file_size / 1024:.1f}KB"
+                elif op.file_size < 1024 * 1024 * 1024:
+                    size = f"{op.file_size / (1024 * 1024):.1f}MB"
+                else:
+                    size = f"{op.file_size / (1024 * 1024 * 1024):.2f}GB"
+            else:
+                size = "-"
+
+            # Format status
+            if op.dry_run:
+                status = "[dim]dry-run[/dim]"
+            elif op.success:
+                status = "[green]✓[/green]"
+            else:
+                status = "[red]✗[/red]"
+
+            # Format rule ID
+            rule = op.rule_id or "-"
+
+            table.add_row(
+                timestamp,
+                op_display,
+                source,
+                destination,
+                rule,
+                size,
+                status,
+            )
+
+        console.print(table)
+
+        # Summary statistics
+        total_size = sum(op.file_size for op in operations if op.file_size and op.success and not op.dry_run)
+        successful = sum(1 for op in operations if op.success and not op.dry_run)
+        failed = sum(1 for op in operations if not op.success and not op.dry_run)
+        dry_runs = sum(1 for op in operations if op.dry_run)
+
+        console.print(f"\n[bold]Summary:[/bold]")
+        console.print(f"  Total operations: {len(operations)}")
+        console.print(f"  Successful: {successful}")
+        if failed > 0:
+            console.print(f"  Failed: {failed}")
+        if dry_runs > 0:
+            console.print(f"  Dry-runs: {dry_runs}")
+
+        if total_size > 0:
+            if total_size < 1024 * 1024:
+                size_str = f"{total_size / 1024:.1f}KB"
+            elif total_size < 1024 * 1024 * 1024:
+                size_str = f"{total_size / (1024 * 1024):.1f}MB"
+            else:
+                size_str = f"{total_size / (1024 * 1024 * 1024):.2f}GB"
+            console.print(f"  Total data processed: {size_str}")
+
+        console.print()
+
+    except Exception as e:
+        console.print(f"[red]Error retrieving history: {e}[/red]")
         raise typer.Exit(1)
 
 

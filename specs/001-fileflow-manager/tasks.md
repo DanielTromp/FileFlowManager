@@ -287,37 +287,37 @@ This is a **web application architecture** project:
 
 ### Backend Implementation for User Story 5
 
-- [ ] T115 [P] [US5] Implement TOML export in backend/fileflow_config/config_manager.py (write all rules and settings)
-- [ ] T116 [P] [US5] Implement TOML import in backend/fileflow_config/config_manager.py (read and validate, merge or replace)
-- [ ] T117 [P] [US5] Add configuration validation on import in backend/fileflow_config/config_manager.py (TOML syntax, schema validation)
-- [ ] T118 [P] [US5] Implement environment variable resolution in backend/fileflow_config/config_manager.py (expand ${VAR} at runtime)
+- [X] T115 [P] [US5] Implement TOML export in backend/fileflow_config/config_manager.py (write all rules and settings)
+- [X] T116 [P] [US5] Implement TOML import in backend/fileflow_config/config_manager.py (read and validate, merge or replace)
+- [X] T117 [P] [US5] Add configuration validation on import in backend/fileflow_config/config_manager.py (TOML syntax, schema validation)
+- [X] T118 [P] [US5] Implement environment variable resolution in backend/fileflow_config/config_manager.py (expand ${VAR} at runtime)
 
 ### CLI Implementation for User Story 5
 
-- [ ] T119 [US5] Implement `fileflow config show` command in backend/fileflow_cli/commands.py (--section, --output-format)
-- [ ] T120 [US5] Implement `fileflow config export` command in backend/fileflow_cli/commands.py (OUTPUT_PATH, --rules-only, --settings-only)
-- [ ] T121 [US5] Implement `fileflow config import` command in backend/fileflow_cli/commands.py (INPUT_PATH, --merge, --force)
-- [ ] T122 [P] [US5] Implement `fileflow config validate` command in backend/fileflow_cli/commands.py (PATH optional)
-- [ ] T123 [P] [US5] Implement `fileflow config edit` command in backend/fileflow_cli/commands.py (open in $EDITOR)
-- [ ] T124 [P] [US5] Implement `fileflow config reset` command in backend/fileflow_cli/commands.py (--force, --keep-rules)
+- [X] T119 [US5] Implement `fileflow config show` command in backend/fileflow_cli/commands.py (--section, --output-format)
+- [X] T120 [US5] Implement `fileflow config export` command in backend/fileflow_cli/commands.py (OUTPUT_PATH, --rules-only, --settings-only)
+- [X] T121 [US5] Implement `fileflow config import` command in backend/fileflow_cli/commands.py (INPUT_PATH, --merge, --force)
+- [X] T122 [P] [US5] Implement `fileflow config validate` command in backend/fileflow_cli/commands.py (PATH optional)
+- [X] T123 [P] [US5] Implement `fileflow config edit` command in backend/fileflow_cli/commands.py (open in $EDITOR)
+- [X] T124 [P] [US5] Implement `fileflow config reset` command in backend/fileflow_cli/commands.py (--force, --keep-rules)
 
 ### GUI Implementation for User Story 5
 
-- [ ] T125 [US5] Implement get_configuration Tauri command handler in backend/fileflow_api/tauri_commands.py
-- [ ] T126 [P] [US5] Implement update_configuration Tauri command handler in backend/fileflow_api/tauri_commands.py
-- [ ] T127 [P] [US5] Implement export_configuration Tauri command handler in backend/fileflow_api/tauri_commands.py
-- [ ] T128 [P] [US5] Implement import_configuration Tauri command handler in backend/fileflow_api/tauri_commands.py
-- [ ] T129 [US5] Create Settings dialog component in frontend/src/lib/components/SettingsDialog.svelte
-- [ ] T130 [US5] Add Export Configuration button in frontend/src/lib/components/SettingsDialog.svelte (file picker)
-- [ ] T131 [US5] Add Import Configuration button in frontend/src/lib/components/SettingsDialog.svelte (file picker, merge option)
-- [ ] T132 [US5] Add configuration preview in frontend/src/lib/components/SettingsDialog.svelte (show current settings)
-- [ ] T133 [US5] Wire up Settings dialog to backend commands in frontend/src/lib/components/SettingsDialog.svelte
+- [X] T125 [US5] Implement get_configuration Tauri command handler in backend/fileflow_api/tauri_commands.py
+- [X] T126 [P] [US5] Implement update_configuration Tauri command handler in backend/fileflow_api/tauri_commands.py
+- [X] T127 [P] [US5] Implement export_configuration Tauri command handler in backend/fileflow_api/tauri_commands.py
+- [X] T128 [P] [US5] Implement import_configuration Tauri command handler in backend/fileflow_api/tauri_commands.py
+- [X] T129 [US5] Create Settings dialog component in frontend/src/routes/Settings.svelte
+- [X] T130 [US5] Add Export Configuration button in frontend/src/routes/Settings.svelte (file picker)
+- [X] T131 [US5] Add Import Configuration button in frontend/src/routes/Settings.svelte (file picker, merge option)
+- [X] T132 [US5] Add configuration preview in frontend/src/routes/Settings.svelte (show current settings)
+- [X] T133 [US5] Wire up Settings dialog to backend commands in frontend/src/routes/Settings.svelte
 
 ### Integration for User Story 5
 
-- [ ] T134 [US5] Add import merge vs replace option in frontend/src/lib/components/SettingsDialog.svelte
-- [ ] T135 [US5] Add validation errors display on import in frontend/src/lib/components/SettingsDialog.svelte
-- [ ] T136 [US5] Validate configuration portability end-to-end (export → clear → import → verify rules restored)
+- [X] T134 [US5] Add import merge vs replace option in frontend/src/routes/Settings.svelte
+- [X] T135 [US5] Add validation errors display on import in frontend/src/routes/Settings.svelte
+- [X] T136 [US5] Validate configuration portability end-to-end (export → clear → import → verify rules restored)
 
 **Checkpoint**: User Story 5 (Configuration Portability) is fully functional - users can export/import config across devices
 
@@ -350,7 +350,7 @@ This is a **web application architecture** project:
 
 ### CLI Enhancements
 
-- [ ] T149 [P] Add `fileflow history` command in backend/fileflow_cli/commands.py (--limit, --operation-type, --rule-id)
+- [X] T149 [P] Add `fileflow history` command in backend/fileflow_cli/commands.py (--limit, --operation-type, --rule-id)
 - [ ] T150 [P] Add `fileflow detect-screenshots` command in backend/fileflow_cli/commands.py
 - [ ] T151 [P] Add `fileflow files duplicates` command in backend/fileflow_cli/commands.py (--delete-auto, --delete-interactive)
 - [ ] T152 [P] Add shell completion generation in backend/fileflow_cli/commands.py (bash, zsh, fish)
@@ -366,9 +366,9 @@ This is a **web application architecture** project:
 
 ### Documentation & Testing
 
-- [ ] T159 [P] Create README.md at repository root with project overview and quickstart
-- [ ] T160 [P] Create backend/README.md with Python backend documentation
-- [ ] T161 [P] Create frontend/README.md with Tauri/Svelte frontend documentation
+- [X] T159 [P] Create README.md at repository root with project overview and quickstart
+- [X] T160 [P] Create backend/README.md with Python backend documentation
+- [X] T161 [P] Create frontend/README.md with Tauri/Svelte frontend documentation
 - [ ] T162 [P] Add docstrings to all public functions in backend/fileflow_*/
 - [ ] T163 [P] Run quickstart.md validation (setup.sh, development server, CLI commands)
 - [ ] T164 [P] Add GitHub Actions CI workflow for linting and type checking

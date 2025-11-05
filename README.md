@@ -2,12 +2,23 @@
 
 **Intelligent automated file organization system for macOS**
 
-Version: 0.1.0 (MVP)
-Status: Development - Phase 3 Complete (User Story 1)
+Version: 0.9.0 (Beta)
+Status: Development - Phase 7 Complete (All User Stories), Phase 8 in Progress (Polish)
 
 ## Overview
 
-FileFlow Manager automatically organizes your macOS screenshots (and other files) using extensible rule-based management. The MVP focuses on screenshot organization with dry-run safety, duplicate detection, and both CLI and GUI interfaces.
+FileFlow Manager is an intelligent, automated file organization system for macOS that helps you keep your files organized using extensible rule-based management. It automatically organizes screenshots by date, allows custom organization rules for any file type, identifies large and old files for cleanup, and supports configuration import/export for portability across machines.
+
+**Key Features:**
+- Automated screenshot organization with date-based folder structure (YYYY/MM/DD)
+- Extensible custom rule engine for organizing any file type
+- Duplicate file detection using SHA-256 checksums
+- Large file discovery and cleanup (configurable threshold)
+- Old file discovery and cleanup (configurable age threshold)
+- Configuration import/export for easy setup on new machines
+- Both CLI and native macOS GUI interfaces
+- Dry-run mode for safe preview before execution
+- Complete operation history tracking
 
 ## Features Implemented
 
@@ -40,31 +51,47 @@ FileFlow Manager automatically organizes your macOS screenshots (and other files
 - Tailwind CSS + daisyUI styling
 - Base layout with navigation
 
-### ✅ Phase 3: User Story 1 - Screenshot Organization (MVP)
+### ✅ Phase 3-7: All User Stories Complete
 
-**Backend Implementation**:
-- Screenshot pattern detection (macOS "Screenshot YYYY-MM-DD" format)
-- Date extraction from filenames
-- Date-based path generation (YYYY/MM/DD structure)
-- SHA-256 checksum calculation (chunked for large files)
-- Duplicate detection by checksum comparison
-- Rule engine with priority ordering and dry-run mode
-- Default screenshot organization rule (enabled by default)
-- Operation logging to SQLite
+**User Story 1 - Screenshot Organization**:
+- Screenshot pattern detection and date extraction
+- Date-based folder organization (YYYY/MM/DD)
+- Duplicate detection using SHA-256 checksums
+- Default screenshot organization rule
+- CLI: `fileflow scan`, `fileflow detect-screenshots`
+- GUI: Dashboard with scan/execute buttons
 
-**CLI Implementation**:
-- `fileflow scan --dry-run` - Preview file organization
-- `fileflow scan --execute` - Execute file operations
-- `fileflow detect-screenshots` - Auto-detect macOS screenshot location
-- Rich table output with colored status indicators
-- Operation summaries with space savings estimates
+**User Story 2 - Custom Rule Creation**:
+- Full rule CRUD operations (create, read, update, delete)
+- Rule validation and priority management
+- GUI rule editor with all configurable options
+- Enable/disable rules without deleting
+- CLI: `fileflow rules list`, `fileflow rules show <id>`, `fileflow rules create`, `fileflow rules update`, `fileflow rules delete`, `fileflow rules enable/disable`
+- GUI: Complete Rules tab with rule editor dialog
 
-**GUI Implementation**:
-- Dashboard with scan status and statistics
-- Dry run and execute buttons
-- Progress indicators for long operations
-- Scan results display with operation details
-- Confirmation dialogs for destructive actions
+**User Story 3 - Large File Cleanup**:
+- Configurable size threshold (default 100MB)
+- Scan across all monitored directories
+- Sort by size, filter by location
+- Batch delete with confirmation and space estimate
+- CLI: `fileflow files large`, `fileflow files delete`
+- GUI: Large Files tab with filtering and batch actions
+
+**User Story 4 - Old File Cleanup**:
+- Configurable age threshold (default 90 days)
+- Scan based on modification date
+- Sort by age, filter by type
+- Batch delete with confirmation
+- CLI: `fileflow files old`, `fileflow files delete`
+- GUI: Old Files tab with filtering and batch actions
+
+**User Story 5 - Configuration Portability**:
+- Export configuration to any location
+- Import with merge or replace strategies
+- Environment variable expansion (${HOME}, ${DESKTOP}, etc.)
+- Configuration validation and error reporting
+- CLI: `fileflow config-show`, `fileflow config-export`, `fileflow config-import`, `fileflow config-import-merge`, `fileflow config-validate`, `fileflow config-edit`, `fileflow config-reset`
+- GUI: Settings tab with export/import/preview
 
 ## Project Structure
 
@@ -147,29 +174,34 @@ FileFlow Manager automatically organizes your macOS screenshots (and other files
 
 ## Current Status
 
-### Completed (51 tasks / 170 total)
+### Completed (136 tasks / 170 total = 80%)
 - ✅ Phase 1: Setup (9/9 tasks)
 - ✅ Phase 2: Foundational (18/18 tasks)
-- ✅ Phase 3: User Story 1 - COMPLETE (24/24 tasks, 100%)
-  - Backend: 100% complete
-  - CLI: 100% complete and production-ready
-  - GUI: 100% complete with operation history
-  - Integration: All Tauri IPC handlers implemented
+- ✅ Phase 3: User Story 1 - Screenshot Organization (24/24 tasks, 100%)
+- ✅ Phase 4: User Story 2 - Custom Rule Creation (29/29 tasks, 100%)
+- ✅ Phase 5: User Story 3 - Large File Cleanup (18/18 tasks, 100%)
+- ✅ Phase 6: User Story 4 - Old File Cleanup (16/16 tasks, 100%)
+- ✅ Phase 7: User Story 5 - Configuration Portability (22/22 tasks, 100%)
+- 🔄 Phase 8: Polish & Cross-Cutting Concerns (0/34 tasks, in progress)
 
-### User Story 1 MVP: COMPLETE
-- ✅ Screenshot organization with date-based structure
-- ✅ Duplicate detection via SHA-256 checksums
-- ✅ Dry-run preview before execution
-- ✅ Operation history tracking and display
-- ✅ CLI fully functional
-- ✅ GUI feature-complete (requires Tauri bridge configuration)
+### All User Stories: COMPLETE
+- ✅ Screenshot organization with intelligent date-based structure
+- ✅ Custom rule creation with full CRUD operations
+- ✅ Large file discovery and cleanup
+- ✅ Old file discovery and cleanup
+- ✅ Configuration import/export with environment variable support
+- ✅ Full-featured CLI with 20+ commands
+- ✅ Native macOS GUI with 5 tabs (Dashboard, Rules, Large Files, Old Files, Settings)
+- ✅ Complete Tauri IPC bridge connecting GUI to Python backend
 
-### Remaining Work
-- **Tauri Bridge Configuration**: Connect Svelte GUI to Python backend (2-3 hours)
-- **User Story 2**: Custom Rule Creation (GUI rule editor)
-- **User Story 3**: Large File Cleanup
-- **User Story 4**: Old File Cleanup
-- **User Story 5**: Configuration Portability
+### Remaining Work (Phase 8 - Polish)
+- Error handling improvements and comprehensive error messages
+- Performance optimization (caching, parallel processing)
+- System integration (health checks, cache management)
+- CLI enhancements (history, duplicates, shell completion, JSON output)
+- GUI polish (keyboard shortcuts, dark mode, loading states, notifications)
+- Documentation (backend/frontend READMEs, docstrings, CI/CD)
+- Build & distribution (setup scripts, DMG packaging, production testing)
 
 ## Getting Started
 
@@ -202,33 +234,53 @@ pnpm install
 
 ### Development
 
-**Run CLI** (fully functional):
+**Run CLI** (production-ready with 20+ commands):
 ```bash
 cd backend
 
-# Scan and organize files (executes immediately)
-poetry run fileflow scan
+# File organization
+poetry run fileflow scan                    # Organize files with dry-run
+poetry run fileflow scan --execute          # Execute file operations
 
-# Detect screenshot location
-poetry run fileflow detect-screenshots
+# Rule management
+poetry run fileflow rules list              # List all rules
+poetry run fileflow rules show <id>         # Show rule details
+poetry run fileflow rules create            # Create new rule (interactive)
+poetry run fileflow rules update <id>       # Update rule
+poetry run fileflow rules delete <id>       # Delete rule
+poetry run fileflow rules enable <id>       # Enable rule
+poetry run fileflow rules disable <id>      # Disable rule
+
+# File discovery
+poetry run fileflow files large             # Find large files
+poetry run fileflow files old               # Find old files
+poetry run fileflow files delete <paths...> # Delete files
+
+# Configuration
+poetry run fileflow config-show             # Show current configuration
+poetry run fileflow config-export <path>    # Export configuration
+poetry run fileflow config-import <path>    # Import configuration (replace)
+poetry run fileflow config-import-merge <path>  # Import and merge
+poetry run fileflow config-validate [path]  # Validate configuration
+poetry run fileflow config-edit             # Edit configuration in $EDITOR
+poetry run fileflow config-reset            # Reset to defaults
+
+# Utilities
+poetry run fileflow detect-screenshots      # Detect screenshot location
 ```
 
-**Run GUI** (requires Tauri IPC implementation):
+**Run GUI** (fully functional native macOS app):
 ```bash
 cd frontend
 pnpm tauri dev
 ```
 
-## Next Steps
-
-To deploy the GUI:
-
-1. Configure Tauri Rust bridge in `frontend/src-tauri/src/main.rs` to invoke Python sidecar
-2. Package Python backend with Tauri build system
-3. Create distributable DMG for macOS
-4. Test full GUI → Backend integration on clean system
-
-**Note**: The CLI is production-ready now and can be used independently.
+The GUI provides 5 tabs:
+- **Dashboard**: Scan and organize files with dry-run preview
+- **Rules**: Create and manage organization rules
+- **Large Files**: Discover and cleanup large files
+- **Old Files**: Discover and cleanup old files
+- **Settings**: Import/export configuration, view current settings
 
 ## Documentation
 
