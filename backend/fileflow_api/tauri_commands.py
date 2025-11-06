@@ -6,6 +6,7 @@ Commands are invoked from the Svelte frontend via Tauri's invoke() API.
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -20,6 +21,34 @@ from fileflow_storage.database import Database
 
 # Setup logging
 logger = get_logger("tauri_commands")
+
+
+# Error codes from contracts/tauri-ipc.md (T137)
+class CommandError(Exception):
+    """
+    Structured error for Tauri IPC commands.
+
+    Attributes:
+        code: Machine-readable error code
+        message: Human-readable error message
+        details: Optional additional context
+    """
+
+    def __init__(self, code: str, message: str, details: Any = None):
+        self.code = code
+        self.message = message
+        self.details = details
+        super().__init__(message)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {
+            "code": self.code,
+            "message": self.message,
+        }
+        if self.details is not None:
+            result["details"] = self.details
+        return result
 
 # Default paths
 DEFAULT_CONFIG_PATH = Path.home() / ".config" / "fileflow" / "fileflow.toml"
@@ -50,21 +79,51 @@ def scan_files(dry_run: bool = True, rule_ids: Optional[List[str]] = None) -> Di
 
     Returns:
         ScanResult as dictionary
+
+    Raises:
+        CommandError: With appropriate error code (T137)
     """
     try:
         logger.info(f"Starting scan: dry_run={dry_run}, rule_ids={rule_ids}")
 
         # Setup
         config_mgr = get_config_manager()
-        config = config_mgr.load()
+        try:
+            config = config_mgr.load()
+        except Exception as e:
+            raise CommandError(
+                "CONFIG_INVALID",
+                "Configuration is invalid or cannot be loaded",
+                {"original_error": str(e)}
+            )
+
         db = get_database()
         cache = ChecksumCache(db)
         engine = RuleEngine(db, cache, config_mgr.expand_env_vars)
 
-        # Filter rules if specified
-        rule_list = config.rules
+        # Validate rule_ids if specified
         if rule_ids:
+            invalid_ids = [rid for rid in rule_ids if not any(r.id == rid for r in config.rules)]
+            if invalid_ids:
+                raise CommandError(
+                    "INVALID_RULE_ID",
+                    f"Specified rule IDs don't exist: {', '.join(invalid_ids)}",
+                    {"invalid_ids": invalid_ids}
+                )
             rule_list = [r for r in config.rules if r.id in rule_ids]
+        else:
+            rule_list = config.rules
+
+        # Check source directory permissions
+        for rule in rule_list:
+            for source_dir in rule.source_directories:
+                expanded_dir = Path(config_mgr.expand_env_vars(source_dir))
+                if not os.access(expanded_dir, os.R_OK):
+                    raise CommandError(
+                        "PERMISSION_DENIED",
+                        f"Cannot read source directory: {expanded_dir}",
+                        {"directory": str(expanded_dir), "rule_id": rule.id}
+                    )
 
         # Run scan
         result = engine.scan(rule_list, dry_run=dry_run)
@@ -79,9 +138,15 @@ def scan_files(dry_run: bool = True, rule_ids: Optional[List[str]] = None) -> Di
 
         return result_dict
 
+    except CommandError:
+        raise
     except Exception as e:
         logger.error(f"Scan failed: {e}", exc_info=True)
-        raise
+        raise CommandError(
+            "SCAN_FAILED",
+            f"Scan operation failed: {str(e)}",
+            {"original_error": str(e), "type": type(e).__name__}
+        )
 
 
 def execute_operations(
@@ -96,6 +161,9 @@ def execute_operations(
 
     Returns:
         ExecutionResult as dictionary
+
+    Raises:
+        CommandError: With appropriate error code (T137)
     """
     try:
         logger.info(f"Executing {len(operation_ids)} operations")
@@ -116,14 +184,49 @@ def execute_operations(
             op for op in scan_result.planned_operations if op.id in operation_ids
         ]
 
-        # Check for delete operations
+        # Validate all operation IDs exist
+        found_ids = {op.id for op in operations_to_execute}
+        invalid_ids = set(operation_ids) - found_ids
+        if invalid_ids:
+            raise CommandError(
+                "INVALID_OPERATION_ID",
+                f"Operation IDs not found: {', '.join(invalid_ids)}",
+                {"invalid_ids": list(invalid_ids)}
+            )
+
+        # Check for delete operations and confirmation (T137)
         has_deletions = any(
             op.operation_type.value == "delete" for op in operations_to_execute
         )
         if has_deletions and not confirm_deletions:
-            raise ValueError(
-                "Delete operations require confirm_deletions=True"
+            raise CommandError(
+                "DELETION_NOT_CONFIRMED",
+                "Delete operations require confirm_deletions=True",
+                {"deletion_count": sum(1 for op in operations_to_execute if op.operation_type.value == "delete")}
             )
+
+        # Disk space validation for move operations (T140)
+        move_ops = [op for op in operations_to_execute if op.operation_type.value == "move"]
+        if move_ops:
+            total_size = sum(op.file_size for op in move_ops if op.file_size)
+            # Get destination directories and check space
+            dest_dirs = {Path(op.destination_path).parent for op in move_ops if op.destination_path}
+            for dest_dir in dest_dirs:
+                if dest_dir.exists():
+                    stat = os.statvfs(dest_dir)
+                    free_space = stat.f_bavail * stat.f_frsize
+                    # Require 10% buffer beyond total file size
+                    required_space = total_size * 1.1
+                    if free_space < required_space:
+                        raise CommandError(
+                            "DISK_SPACE_INSUFFICIENT",
+                            f"Insufficient disk space on {dest_dir}",
+                            {
+                                "required_mb": required_space / (1024 * 1024),
+                                "available_mb": free_space / (1024 * 1024),
+                                "destination": str(dest_dir)
+                            }
+                        )
 
         # Execute operations
         executed = engine.execute(operations_to_execute)
@@ -156,13 +259,24 @@ def execute_operations(
 
         return result
 
+    except CommandError:
+        raise
     except Exception as e:
         logger.error(f"Execution failed: {e}", exc_info=True)
-        raise
+        raise CommandError(
+            "EXECUTION_FAILED",
+            f"Execution operation failed: {str(e)}",
+            {"original_error": str(e), "type": type(e).__name__}
+        )
 
 
 def get_rules() -> List[Dict[str, Any]]:
-    """Get all configured rules."""
+    """
+    Get all configured rules.
+
+    Raises:
+        CommandError: With appropriate error code (T137)
+    """
     try:
         config_mgr = get_config_manager()
         config = config_mgr.load()
@@ -171,11 +285,20 @@ def get_rules() -> List[Dict[str, Any]]:
 
     except Exception as e:
         logger.error(f"Failed to get rules: {e}", exc_info=True)
-        raise
+        raise CommandError(
+            "CONFIG_READ_FAILED",
+            "Cannot read configuration",
+            {"original_error": str(e)}
+        )
 
 
 def get_configuration() -> Dict[str, Any]:
-    """Get current configuration."""
+    """
+    Get current configuration.
+
+    Raises:
+        CommandError: With appropriate error code (T137)
+    """
     try:
         config_mgr = get_config_manager()
         config = config_mgr.load()
@@ -184,7 +307,11 @@ def get_configuration() -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to get configuration: {e}", exc_info=True)
-        raise
+        raise CommandError(
+            "CONFIG_READ_FAILED",
+            "Cannot read configuration",
+            {"original_error": str(e)}
+        )
 
 
 def export_configuration(destination_path: str) -> Dict[str, Any]:
@@ -196,17 +323,36 @@ def export_configuration(destination_path: str) -> Dict[str, Any]:
 
     Returns:
         Success message
+
+    Raises:
+        CommandError: With appropriate error code (T137)
     """
     try:
+        # Check write permission
+        dest_path = Path(destination_path)
+        dest_dir = dest_path.parent
+        if dest_dir.exists() and not os.access(dest_dir, os.W_OK):
+            raise CommandError(
+                "PERMISSION_DENIED",
+                f"No write access to destination directory: {dest_dir}",
+                {"destination": str(dest_dir)}
+            )
+
         config_mgr = get_config_manager()
         config_mgr.export(destination_path)
 
         logger.info(f"Configuration exported to: {destination_path}")
         return {"success": True, "message": f"Configuration exported to {destination_path}"}
 
+    except CommandError:
+        raise
     except Exception as e:
         logger.error(f"Failed to export configuration: {e}", exc_info=True)
-        raise
+        raise CommandError(
+            "EXPORT_FAILED",
+            f"Cannot write to destination: {str(e)}",
+            {"destination": destination_path, "original_error": str(e)}
+        )
 
 
 def import_configuration(
@@ -222,18 +368,42 @@ def import_configuration(
 
     Returns:
         Success message
+
+    Raises:
+        CommandError: With appropriate error code (T137)
     """
     try:
+        # Check file exists
+        if not Path(source_path).exists():
+            raise CommandError(
+                "FILE_NOT_FOUND",
+                f"Source file doesn't exist: {source_path}",
+                {"source": source_path}
+            )
+
         config_mgr = get_config_manager()
-        config_mgr.import_config(source_path, merge=merge)
+        try:
+            config_mgr.import_config(source_path, merge=merge)
+        except ValueError as e:
+            raise CommandError(
+                "VALIDATION_FAILED",
+                f"Invalid configuration: {str(e)}",
+                {"source": source_path, "validation_error": str(e)}
+            )
 
         mode = "merged" if merge else "replaced"
         logger.info(f"Configuration {mode} from: {source_path}")
         return {"success": True, "message": f"Configuration {mode} successfully"}
 
+    except CommandError:
+        raise
     except Exception as e:
         logger.error(f"Failed to import configuration: {e}", exc_info=True)
-        raise
+        raise CommandError(
+            "IMPORT_FAILED",
+            f"Cannot read source file: {str(e)}",
+            {"source": source_path, "original_error": str(e)}
+        )
 
 
 def detect_screenshot_location() -> str:
@@ -281,6 +451,9 @@ def get_operation_history(
 
     Returns:
         List of FileOperation dictionaries
+
+    Raises:
+        CommandError: With appropriate error code (T137)
     """
     try:
         db = get_database()
@@ -304,7 +477,11 @@ def get_operation_history(
 
     except Exception as e:
         logger.error(f"Failed to get operation history: {e}", exc_info=True)
-        raise
+        raise CommandError(
+            "DATABASE_ERROR",
+            f"Failed to query database: {str(e)}",
+            {"original_error": str(e)}
+        )
 
 
 def create_rule(rule_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -316,6 +493,9 @@ def create_rule(rule_data: Dict[str, Any]) -> Dict[str, Any]:
 
     Returns:
         Created rule as dictionary
+
+    Raises:
+        CommandError: With appropriate error code (T137)
     """
     try:
         from fileflow_config.rule_schema import RuleValidator
@@ -330,26 +510,54 @@ def create_rule(rule_data: Dict[str, Any]) -> Dict[str, Any]:
 
         # Check if rule ID already exists
         if any(r.id == rule_data['id'] for r in config.rules):
-            raise ValueError(f"Rule with ID '{rule_data['id']}' already exists")
+            raise CommandError(
+                "DUPLICATE_RULE_NAME",
+                f"Rule with ID '{rule_data['id']}' already exists",
+                {"rule_id": rule_data['id']}
+            )
 
         # Create rule from data
-        new_rule = Rule(**rule_data)
+        try:
+            new_rule = Rule(**rule_data)
+        except Exception as e:
+            raise CommandError(
+                "VALIDATION_FAILED",
+                f"Invalid rule data: {str(e)}",
+                {"validation_error": str(e)}
+            )
 
         # Validate rule
         valid, errors = RuleValidator.validate_rule(new_rule, check_filesystem=True)
         if not valid:
-            raise ValueError(f"Validation errors: {'; '.join(errors)}")
+            raise CommandError(
+                "VALIDATION_FAILED",
+                f"Rule validation failed: {'; '.join(errors)}",
+                {"validation_errors": errors}
+            )
 
         # Add to configuration
         config.rules.append(new_rule)
-        config_mgr.save(config)
+        try:
+            config_mgr.save(config)
+        except Exception as e:
+            raise CommandError(
+                "CONFIG_WRITE_FAILED",
+                "Cannot write to configuration file",
+                {"original_error": str(e)}
+            )
 
         logger.info(f"Created rule: {new_rule.name} ({new_rule.id})")
         return new_rule.model_dump(mode="json")
 
+    except CommandError:
+        raise
     except Exception as e:
         logger.error(f"Failed to create rule: {e}", exc_info=True)
-        raise
+        raise CommandError(
+            "VALIDATION_FAILED",
+            f"Failed to create rule: {str(e)}",
+            {"original_error": str(e)}
+        )
 
 
 def update_rule(rule_id: str, rule_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -362,6 +570,9 @@ def update_rule(rule_id: str, rule_data: Dict[str, Any]) -> Dict[str, Any]:
 
     Returns:
         Updated rule as dictionary
+
+    Raises:
+        CommandError: With appropriate error code (T137)
     """
     try:
         from fileflow_config.rule_schema import RuleValidator
@@ -372,7 +583,11 @@ def update_rule(rule_id: str, rule_data: Dict[str, Any]) -> Dict[str, Any]:
         # Find rule
         rule = next((r for r in config.rules if r.id == rule_id), None)
         if not rule:
-            raise ValueError(f"Rule '{rule_id}' not found")
+            raise CommandError(
+                "RULE_NOT_FOUND",
+                f"Rule '{rule_id}' not found",
+                {"rule_id": rule_id}
+            )
 
         # Update fields
         for key, value in rule_data.items():
@@ -382,17 +597,34 @@ def update_rule(rule_id: str, rule_data: Dict[str, Any]) -> Dict[str, Any]:
         # Validate updated rule
         valid, errors = RuleValidator.validate_rule(rule, check_filesystem=True)
         if not valid:
-            raise ValueError(f"Validation errors: {'; '.join(errors)}")
+            raise CommandError(
+                "VALIDATION_FAILED",
+                f"Rule validation failed: {'; '.join(errors)}",
+                {"validation_errors": errors}
+            )
 
         # Save configuration
-        config_mgr.save(config)
+        try:
+            config_mgr.save(config)
+        except Exception as e:
+            raise CommandError(
+                "CONFIG_WRITE_FAILED",
+                "Cannot write to configuration file",
+                {"original_error": str(e)}
+            )
 
         logger.info(f"Updated rule: {rule.name} ({rule.id})")
         return rule.model_dump(mode="json")
 
+    except CommandError:
+        raise
     except Exception as e:
         logger.error(f"Failed to update rule: {e}", exc_info=True)
-        raise
+        raise CommandError(
+            "VALIDATION_FAILED",
+            f"Failed to update rule: {str(e)}",
+            {"original_error": str(e)}
+        )
 
 
 def delete_rule(rule_id: str) -> Dict[str, Any]:
@@ -404,6 +636,9 @@ def delete_rule(rule_id: str) -> Dict[str, Any]:
 
     Returns:
         Success message
+
+    Raises:
+        CommandError: With appropriate error code (T137)
     """
     try:
         config_mgr = get_config_manager()
@@ -412,20 +647,37 @@ def delete_rule(rule_id: str) -> Dict[str, Any]:
         # Find rule
         rule = next((r for r in config.rules if r.id == rule_id), None)
         if not rule:
-            raise ValueError(f"Rule '{rule_id}' not found")
+            raise CommandError(
+                "RULE_NOT_FOUND",
+                f"Rule '{rule_id}' not found",
+                {"rule_id": rule_id}
+            )
 
         rule_name = rule.name
 
         # Remove rule
         config.rules = [r for r in config.rules if r.id != rule_id]
-        config_mgr.save(config)
+        try:
+            config_mgr.save(config)
+        except Exception as e:
+            raise CommandError(
+                "CONFIG_WRITE_FAILED",
+                "Cannot write to configuration file",
+                {"original_error": str(e)}
+            )
 
         logger.info(f"Deleted rule: {rule_name} ({rule_id})")
         return {"success": True, "message": f"Rule '{rule_name}' deleted"}
 
+    except CommandError:
+        raise
     except Exception as e:
         logger.error(f"Failed to delete rule: {e}", exc_info=True)
-        raise
+        raise CommandError(
+            "CONFIG_WRITE_FAILED",
+            f"Failed to delete rule: {str(e)}",
+            {"original_error": str(e)}
+        )
 
 
 def toggle_rule(rule_id: str, enabled: bool) -> Dict[str, Any]:
@@ -438,6 +690,9 @@ def toggle_rule(rule_id: str, enabled: bool) -> Dict[str, Any]:
 
     Returns:
         Updated rule as dictionary
+
+    Raises:
+        CommandError: With appropriate error code (T137)
     """
     try:
         config_mgr = get_config_manager()
@@ -446,19 +701,36 @@ def toggle_rule(rule_id: str, enabled: bool) -> Dict[str, Any]:
         # Find rule
         rule = next((r for r in config.rules if r.id == rule_id), None)
         if not rule:
-            raise ValueError(f"Rule '{rule_id}' not found")
+            raise CommandError(
+                "RULE_NOT_FOUND",
+                f"Rule '{rule_id}' not found",
+                {"rule_id": rule_id}
+            )
 
         # Toggle enabled state
         rule.enabled = enabled
-        config_mgr.save(config)
+        try:
+            config_mgr.save(config)
+        except Exception as e:
+            raise CommandError(
+                "CONFIG_WRITE_FAILED",
+                "Cannot write to configuration file",
+                {"original_error": str(e)}
+            )
 
         action = "enabled" if enabled else "disabled"
         logger.info(f"Rule '{rule.name}' ({rule.id}) {action}")
         return rule.model_dump(mode="json")
 
+    except CommandError:
+        raise
     except Exception as e:
         logger.error(f"Failed to toggle rule: {e}", exc_info=True)
-        raise
+        raise CommandError(
+            "CONFIG_WRITE_FAILED",
+            f"Failed to toggle rule: {str(e)}",
+            {"original_error": str(e)}
+        )
 
 
 def get_large_files(
@@ -474,9 +746,20 @@ def get_large_files(
 
     Returns:
         List of FileMetadata dictionaries sorted by size (largest first)
+
+    Raises:
+        CommandError: With appropriate error code (T137)
     """
     try:
         from fileflow_core.file_scanner import FileScanner
+
+        # Validate threshold
+        if threshold_mb <= 0:
+            raise CommandError(
+                "INVALID_THRESHOLD",
+                "Threshold must be greater than 0",
+                {"threshold_mb": threshold_mb}
+            )
 
         config_mgr = get_config_manager()
         config = config_mgr.load()
@@ -501,9 +784,15 @@ def get_large_files(
 
         return [file.model_dump(mode="json") for file in large_files]
 
+    except CommandError:
+        raise
     except Exception as e:
         logger.error(f"Failed to get large files: {e}", exc_info=True)
-        raise
+        raise CommandError(
+            "SCAN_FAILED",
+            f"Failed to scan directories: {str(e)}",
+            {"original_error": str(e)}
+        )
 
 
 def get_old_files(
@@ -521,9 +810,20 @@ def get_old_files(
 
     Returns:
         List of FileMetadata dictionaries sorted by age (oldest first)
+
+    Raises:
+        CommandError: With appropriate error code (T137)
     """
     try:
         from fileflow_core.file_scanner import FileScanner
+
+        # Validate threshold
+        if threshold_days <= 0:
+            raise CommandError(
+                "INVALID_THRESHOLD",
+                "Threshold must be greater than 0",
+                {"threshold_days": threshold_days}
+            )
 
         config_mgr = get_config_manager()
         config = config_mgr.load()
@@ -549,9 +849,15 @@ def get_old_files(
 
         return [file.model_dump(mode="json") for file in old_files]
 
+    except CommandError:
+        raise
     except Exception as e:
         logger.error(f"Failed to get old files: {e}", exc_info=True)
-        raise
+        raise CommandError(
+            "SCAN_FAILED",
+            f"Failed to scan directories: {str(e)}",
+            {"original_error": str(e)}
+        )
 
 
 def delete_files(
@@ -567,12 +873,28 @@ def delete_files(
 
     Returns:
         Dictionary with deletion results (deleted_count, failed_count, errors, space_freed_mb)
+
+    Raises:
+        CommandError: With appropriate error code (T137)
     """
     try:
         from fileflow_core.file_operations import FileOperations
 
+        # Validate file_paths not empty
+        if not file_paths:
+            raise CommandError(
+                "NO_FILES_SPECIFIED",
+                "file_paths is empty",
+                {"file_paths": file_paths}
+            )
+
+        # Validate confirmation
         if not confirm_deletions:
-            raise ValueError("Deletions require confirm_deletions=True")
+            raise CommandError(
+                "DELETION_NOT_CONFIRMED",
+                "Deletions require confirm_deletions=True",
+                {"file_count": len(file_paths)}
+            )
 
         # Convert to Path objects
         paths = [Path(p) for p in file_paths]
@@ -587,9 +909,15 @@ def delete_files(
 
         return result
 
+    except CommandError:
+        raise
     except Exception as e:
         logger.error(f"Failed to delete files: {e}", exc_info=True)
-        raise
+        raise CommandError(
+            "EXECUTION_FAILED",
+            f"Failed to delete files: {str(e)}",
+            {"original_error": str(e)}
+        )
 
 
 # CLI entry point for Tauri sidecar
@@ -636,10 +964,22 @@ if __name__ == "__main__":
             else:
                 result = {"error": f"Unknown command: {command}"}
 
-            # Output result as JSON
+                # Output result as JSON
             print(json.dumps(result))
 
+        except CommandError as e:
+            # Serialize structured error (T137)
+            error_result = {"error": e.to_dict()}
+            print(json.dumps(error_result))
+            sys.exit(1)
         except Exception as e:
-            error_result = {"error": str(e)}
+            # Fallback for unexpected errors
+            error_result = {
+                "error": {
+                    "code": "UNKNOWN_ERROR",
+                    "message": str(e),
+                    "details": {"type": type(e).__name__}
+                }
+            }
             print(json.dumps(error_result))
             sys.exit(1)

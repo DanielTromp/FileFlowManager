@@ -1,5 +1,9 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { Writable } from 'svelte/store';
+  import { initializeTheme } from '../lib/stores/theme';
+  import ThemeToggle from '../lib/components/ThemeToggle.svelte';
+  import { initializeNotifications } from '../lib/notifications';
 
   export let currentRoute: Writable<string>;
 
@@ -14,14 +18,25 @@
   function navigateTo(routeId: string) {
     currentRoute.set(routeId);
   }
+
+  // Initialize theme on mount (T155)
+  // Initialize notifications on mount (T158)
+  onMount(async () => {
+    initializeTheme();
+    await initializeNotifications();
+  });
 </script>
 
 <div class="flex h-screen bg-base-200">
   <!-- Sidebar -->
   <aside class="w-64 bg-base-100 shadow-lg">
-    <div class="p-4">
-      <h1 class="text-2xl font-bold text-primary">FileFlow Manager</h1>
-      <p class="text-sm text-base-content/60">Automated File Organization</p>
+    <div class="p-4 flex items-start justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-primary">FileFlow Manager</h1>
+        <p class="text-sm text-base-content/60">Automated File Organization</p>
+      </div>
+      <!-- Theme Toggle (T155) -->
+      <ThemeToggle />
     </div>
 
     <nav class="mt-4">

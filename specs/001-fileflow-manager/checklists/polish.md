@@ -13,18 +13,18 @@
 
 ### Requirement Completeness - Error Handling
 
-- [ ] CHK001 - Are error response requirements specified for all Tauri IPC failure modes (network, permission, disk space, corruption, timeout)? [Completeness, Tasks §T137, Gap]
-- [ ] CHK002 - Are error code definitions documented in contracts/tauri-ipc.md with unique identifiers, severity levels, and user-facing messages? [Traceability, Tasks §T137]
+- [X] CHK001 - Are error response requirements specified for all Tauri IPC failure modes (network, permission, disk space, corruption, timeout)? [Completeness, Tasks §T137, Gap]
+- [X] CHK002 - Are error code definitions documented in contracts/tauri-ipc.md with unique identifiers, severity levels, and user-facing messages? [Traceability, Tasks §T137]
 - [ ] CHK003 - Are requirements defined for error message localization and user language preferences? [Coverage, Gap]
-- [ ] CHK004 - Are error UI component requirements specified including visual design, positioning, dismissibility, and accessibility? [Completeness, Tasks §T138, Gap]
+- [X] CHK004 - Are error UI component requirements specified including visual design, positioning, dismissibility, and accessibility? [Completeness, Tasks §T138, Gap]
 - [ ] CHK005 - Are requirements defined for error persistence (which errors are logged vs ephemeral)? [Gap]
 
 ### Requirement Clarity - Error Messages
 
-- [ ] CHK006 - Are "actionable error messages" quantified with specific criteria (e.g., "must include corrective action", "must identify failure cause", "must provide help link")? [Clarity, Spec §FR-044, Tasks §T138]
-- [ ] CHK007 - Is the term "graceful degradation" (Tasks §T139) defined with measurable behavior (e.g., "continues processing other files", "logs error but doesn't crash")? [Clarity, Tasks §T139]
-- [ ] CHK008 - Are permission error recovery requirements explicitly specified (retry logic, fallback behaviors, user notifications)? [Clarity, Tasks §T139]
-- [ ] CHK009 - Are disk space validation thresholds quantified (e.g., "check if destination has 110% of file size available")? [Clarity, Tasks §T140, Gap]
+- [X] CHK006 - Are "actionable error messages" quantified with specific criteria (e.g., "must include corrective action", "must identify failure cause", "must provide help link")? [Clarity, Spec §FR-044, Tasks §T138]
+- [X] CHK007 - Is the term "graceful degradation" (Tasks §T139) defined with measurable behavior (e.g., "continues processing other files", "logs error but doesn't crash")? [Clarity, Tasks §T139]
+- [X] CHK008 - Are permission error recovery requirements explicitly specified (retry logic, fallback behaviors, user notifications)? [Clarity, Tasks §T139]
+- [X] CHK009 - Are disk space validation thresholds quantified (e.g., "check if destination has 110% of file size available")? [Clarity, Tasks §T140, Gap]
 
 ### Scenario Coverage - Error Handling
 
@@ -37,7 +37,7 @@
 
 - [ ] CHK014 - Are requirements defined for error handling when error logging itself fails? [Edge Case, Gap]
 - [ ] CHK015 - Are requirements specified for error UI behavior when multiple errors occur rapidly (error flooding)? [Edge Case, Gap]
-- [ ] CHK016 - Are requirements defined for disk space validation failures (e.g., unable to read disk space)? [Edge Case, Tasks §T140, Gap]
+- [X] CHK016 - Are requirements defined for disk space validation failures (e.g., unable to read disk space)? [Edge Case, Tasks §T140, Gap]
 
 ---
 
@@ -45,15 +45,15 @@
 
 ### Requirement Completeness - Performance
 
-- [ ] CHK017 - Are checksum caching requirements fully specified including cache key structure, invalidation triggers, and TTL policies? [Completeness, Tasks §T141]
-- [ ] CHK018 - Are parallel scanning requirements defined including thread pool size, work distribution algorithm, and resource limits? [Completeness, Tasks §T142, Gap]
+- [X] CHK017 - Are checksum caching requirements fully specified including cache key structure, invalidation triggers, and TTL policies? [Completeness, Tasks §T141]
+- [X] CHK018 - Are parallel scanning requirements defined including thread pool size, work distribution algorithm, and resource limits? [Completeness, Tasks §T142, Gap]
 - [ ] CHK019 - Are operation cancellation requirements specified for all long-running operations (scan, move, delete, checksum calculation)? [Completeness, Tasks §T143]
 - [ ] CHK020 - Are progress event requirements defined including update frequency, payload structure, and aggregation rules? [Completeness, Tasks §T144]
 
 ### Requirement Clarity - Performance Metrics
 
-- [ ] CHK021 - Are "ThreadPoolExecutor tuning" parameters quantified with specific values (e.g., "max_workers=4", "queue_size=1000")? [Clarity, Tasks §T142]
-- [ ] CHK022 - Is the "avoid recalculation" optimization quantified with measurable criteria (e.g., "cache hit rate >90%", "checksum reuse rate >95%")? [Clarity, Tasks §T141]
+- [X] CHK021 - Are "ThreadPoolExecutor tuning" parameters quantified with specific values (e.g., "max_workers=4", "queue_size=1000")? [Clarity, Tasks §T142]
+- [X] CHK022 - Is the "avoid recalculation" optimization quantified with measurable criteria (e.g., "cache hit rate >90%", "checksum reuse rate >95%")? [Clarity, Tasks §T141]
 - [ ] CHK023 - Is ">5 seconds" threshold for progress indicators consistent across all long operations (scan, move, checksum, import/export)? [Consistency, Plan §Performance Goals, Tasks §T144]
 - [ ] CHK024 - Are performance targets quantified for all T141-T144 optimizations with baseline and target metrics? [Measurability, Gap]
 
@@ -66,9 +66,9 @@
 
 ### Consistency - Performance
 
-- [ ] CHK029 - Are caching requirements consistent across checksum cache (T141) and operation history cache? [Consistency, Tasks §T141]
+- [X] CHK029 - Are caching requirements consistent across checksum cache (T141) and operation history cache? [Consistency, Tasks §T141]
 - [ ] CHK030 - Are progress indicator requirements consistent between CLI and GUI implementations? [Consistency, Tasks §T144]
-- [ ] CHK031 - Do parallel scanning requirements align with memory footprint constraints (<200MB)? [Consistency, Plan §Constraints, Tasks §T142]
+- [X] CHK031 - Do parallel scanning requirements align with memory footprint constraints (<200MB)? [Consistency, Plan §Constraints, Tasks §T142]
 
 ---
 
@@ -76,15 +76,15 @@
 
 ### Requirement Completeness - System Integration
 
-- [ ] CHK032 - Are system health check requirements fully specified including metrics checked, thresholds, and response payloads? [Completeness, Tasks §T145, Gap]
-- [ ] CHK033 - Are cache clearing requirements defined for both checksum cache and history database with atomicity guarantees? [Completeness, Tasks §T146]
-- [ ] CHK034 - Are screenshot location detection requirements specified for all macOS versions (10.15+) including fallback behavior? [Completeness, Tasks §T147, Spec §FR-022]
-- [ ] CHK035 - Are operation history display requirements defined including pagination, filtering, sorting, and date range selection? [Completeness, Tasks §T148, Spec §FR-035-037]
+- [X] CHK032 - Are system health check requirements fully specified including metrics checked, thresholds, and response payloads? [Completeness, Tasks §T145, Gap]
+- [X] CHK033 - Are cache clearing requirements defined for both checksum cache and history database with atomicity guarantees? [Completeness, Tasks §T146]
+- [X] CHK034 - Are screenshot location detection requirements specified for all macOS versions (10.15+) including fallback behavior? [Completeness, Tasks §T147, Spec §FR-022]
+- [X] CHK035 - Are operation history display requirements defined including pagination, filtering, sorting, and date range selection? [Completeness, Tasks §T148, Spec §FR-035-037]
 
 ### Requirement Clarity - System Integration
 
-- [ ] CHK036 - Is "health check" (T145) defined with specific testable criteria (e.g., "database accessible", "config valid", "monitored directories readable")? [Clarity, Tasks §T145]
-- [ ] CHK037 - Is "macOS system prefs" detection method (T147) explicitly specified (e.g., "defaults read com.apple.screencapture location")? [Clarity, Tasks §T147, Spec §FR-022]
+- [X] CHK036 - Is "health check" (T145) defined with specific testable criteria (e.g., "database accessible", "config valid", "monitored directories readable")? [Clarity, Tasks §T145]
+- [X] CHK037 - Is "macOS system prefs" detection method (T147) explicitly specified (e.g., "defaults read com.apple.screencapture location")? [Clarity, Tasks §T147, Spec §FR-022]
 - [ ] CHK038 - Are cache cleanup requirements quantified with specific retention policies (e.g., "delete entries older than 90 days")? [Clarity, Tasks §T146, Gap]
 
 ### Scenario Coverage - System Integration
@@ -96,9 +96,9 @@
 
 ### Dependencies - System Integration
 
-- [ ] CHK043 - Are macOS version dependencies documented for screenshot location detection (10.15+)? [Dependency, Tasks §T147, Plan §Target Platform]
+- [X] CHK043 - Are macOS version dependencies documented for screenshot location detection (10.15+)? [Dependency, Tasks §T147, Plan §Target Platform]
 - [ ] CHK044 - Are SQLite version requirements documented for history database operations? [Dependency, Plan §Primary Dependencies, Gap]
-- [ ] CHK045 - Are Tauri IPC contract dependencies documented between frontend and backend commands? [Dependency, Tasks §T145-T148, Gap]
+- [X] CHK045 - Are Tauri IPC contract dependencies documented between frontend and backend commands? [Dependency, Tasks §T145-T148, Gap]
 
 ---
 
@@ -106,17 +106,17 @@
 
 ### Requirement Completeness - CLI Commands
 
-- [ ] CHK046 - Are `fileflow history` command requirements fully specified including all flags (--limit, --operation-type, --rule-id) with data types and defaults? [Completeness, Tasks §T149, Spec §FR-035-037]
-- [ ] CHK047 - Are `fileflow detect-screenshots` command requirements defined including output format, error handling, and exit codes? [Completeness, Tasks §T150, Spec §FR-022]
-- [ ] CHK048 - Are `fileflow files duplicates` command requirements specified including interactive vs auto modes, confirmation prompts, and dry-run support? [Completeness, Tasks §T151, Spec §FR-010]
-- [ ] CHK049 - Are shell completion generation requirements defined for all supported shells (bash, zsh, fish) including installation instructions? [Completeness, Tasks §T152, Gap]
-- [ ] CHK050 - Are JSON output format requirements specified for all CLI commands including schema, field names, and error representations? [Completeness, Tasks §T153, Gap]
+- [X] CHK046 - Are `fileflow history` command requirements fully specified including all flags (--limit, --operation-type, --rule-id) with data types and defaults? [Completeness, Tasks §T149, Spec §FR-035-037]
+- [X] CHK047 - Are `fileflow detect-screenshots` command requirements defined including output format, error handling, and exit codes? [Completeness, Tasks §T150, Spec §FR-022]
+- [X] CHK048 - Are `fileflow files duplicates` command requirements specified including interactive vs auto modes, confirmation prompts, and dry-run support? [Completeness, Tasks §T151, Spec §FR-010]
+- [X] CHK049 - Are shell completion generation requirements defined for all supported shells (bash, zsh, fish) including installation instructions? [Completeness, Tasks §T152, Gap]
+- [X] CHK050 - Are JSON output format requirements specified for all CLI commands including schema, field names, and error representations? [Completeness, Tasks §T153, Gap]
 
 ### Requirement Clarity - CLI Behavior
 
-- [ ] CHK051 - Are "--delete-auto" and "--delete-interactive" modes (T151) clearly differentiated with specific behavior for each? [Clarity, Tasks §T151]
-- [ ] CHK052 - Is "--output-format json" behavior explicitly defined (stdout vs stderr, pretty-print vs compact, error formatting)? [Clarity, Tasks §T153]
-- [ ] CHK053 - Are completion generation requirements clear on where files are written and how users activate them? [Clarity, Tasks §T152, Gap]
+- [X] CHK051 - Are "--delete-auto" and "--delete-interactive" modes (T151) clearly differentiated with specific behavior for each? [Clarity, Tasks §T151]
+- [X] CHK052 - Is "--output-format json" behavior explicitly defined (stdout vs stderr, pretty-print vs compact, error formatting)? [Clarity, Tasks §T153]
+- [X] CHK053 - Are completion generation requirements clear on where files are written and how users activate them? [Clarity, Tasks §T152, Gap]
 
 ### Scenario Coverage - CLI Commands
 
@@ -127,9 +127,9 @@
 
 ### Consistency - CLI Commands
 
-- [ ] CHK058 - Are error handling and exit code requirements consistent across all CLI commands? [Consistency, Gap]
+- [X] CHK058 - Are error handling and exit code requirements consistent across all CLI commands? [Consistency, Gap]
 - [ ] CHK059 - Are --help text formatting and argument naming conventions consistent across all commands? [Consistency, Gap]
-- [ ] CHK060 - Are JSON output schemas consistent between commands (common error format, metadata structure)? [Consistency, Tasks §T153, Gap]
+- [X] CHK060 - Are JSON output schemas consistent between commands (common error format, metadata structure)? [Consistency, Tasks §T153, Gap]
 - [ ] CHK061 - Do CLI command names follow consistent kebab-case convention (e.g., config-show, not "config show")? [Consistency, Gap]
 
 ---
@@ -138,18 +138,18 @@
 
 ### Requirement Completeness - GUI Features
 
-- [ ] CHK062 - Are keyboard shortcut requirements fully specified including key combinations, conflicts, platform conventions, and accessibility? [Completeness, Tasks §T154, Gap]
-- [ ] CHK063 - Are dark mode requirements defined including color palette, contrast ratios (WCAG AA), system preference detection, and manual toggle? [Completeness, Tasks §T155, Gap]
-- [ ] CHK064 - Are loading state requirements specified for all async operations including spinner design, skeleton UI, and progress indication? [Completeness, Tasks §T156, Spec §FR-043]
-- [ ] CHK065 - Are empty state requirements defined for all tabs including illustration, text copy, call-to-action buttons, and first-run experience? [Completeness, Tasks §T157, Gap]
-- [ ] CHK066 - Are notification requirements specified including trigger conditions, content, duration, dismissibility, and native vs in-app display? [Completeness, Tasks §T158, Gap]
+- [X] CHK062 - Are keyboard shortcut requirements fully specified including key combinations, conflicts, platform conventions, and accessibility? [Completeness, Tasks §T154, Gap]
+- [X] CHK063 - Are dark mode requirements defined including color palette, contrast ratios (WCAG AA), system preference detection, and manual toggle? [Completeness, Tasks §T155, Gap]
+- [X] CHK064 - Are loading state requirements specified for all async operations including spinner design, skeleton UI, and progress indication? [Completeness, Tasks §T156, Spec §FR-043]
+- [X] CHK065 - Are empty state requirements defined for all tabs including illustration, text copy, call-to-action buttons, and first-run experience? [Completeness, Tasks §T157, Gap]
+- [X] CHK066 - Are notification requirements specified including trigger conditions, content, duration, dismissibility, and native vs in-app display? [Completeness, Tasks §T158, Gap]
 
 ### Requirement Clarity - GUI Behavior
 
-- [ ] CHK067 - Is "scan on Cmd+S" shortcut (T154) explicitly defined including current tab context and conflict resolution? [Clarity, Tasks §T154]
-- [ ] CHK068 - Is "respect system preferences" (T155) defined with specific detection method and fallback behavior? [Clarity, Tasks §T155]
-- [ ] CHK069 - Are "native macOS notifications" (T158) requirements clear on permission handling and fallback to in-app notifications? [Clarity, Tasks §T158]
-- [ ] CHK070 - Are "completed operations" notification triggers (T158) quantified (e.g., "notify after >10 files processed", "notify after operations >30 seconds")? [Clarity, Tasks §T158]
+- [X] CHK067 - Is "scan on Cmd+S" shortcut (T154) explicitly defined including current tab context and conflict resolution? [Clarity, Tasks §T154]
+- [X] CHK068 - Is "respect system preferences" (T155) defined with specific detection method and fallback behavior? [Clarity, Tasks §T155]
+- [X] CHK069 - Are "native macOS notifications" (T158) requirements clear on permission handling and fallback to in-app notifications? [Clarity, Tasks §T158]
+- [X] CHK070 - Are "completed operations" notification triggers (T158) quantified (e.g., "notify after >10 files processed", "notify after operations >30 seconds")? [Clarity, Tasks §T158]
 
 ### Scenario Coverage - GUI Features
 
@@ -161,10 +161,10 @@
 
 ### Measurability - GUI Polish
 
-- [ ] CHK076 - Can keyboard shortcut requirements be objectively tested (keystroke simulation, conflict detection)? [Measurability, Tasks §T154]
-- [ ] CHK077 - Can dark mode contrast requirements be measured with automated tools (WCAG AA compliance)? [Measurability, Tasks §T155]
-- [ ] CHK078 - Can loading state timing requirements be measured (<3s startup, progress shown for >5s operations)? [Measurability, Tasks §T156, Plan §Performance Goals]
-- [ ] CHK079 - Can empty state requirements be objectively verified (all tabs, all scenarios covered)? [Measurability, Tasks §T157]
+- [X] CHK076 - Can keyboard shortcut requirements be objectively tested (keystroke simulation, conflict detection)? [Measurability, Tasks §T154]
+- [X] CHK077 - Can dark mode contrast requirements be measured with automated tools (WCAG AA compliance)? [Measurability, Tasks §T155]
+- [X] CHK078 - Can loading state timing requirements be measured (<3s startup, progress shown for >5s operations)? [Measurability, Tasks §T156, Plan §Performance Goals]
+- [X] CHK079 - Can empty state requirements be objectively verified (all tabs, all scenarios covered)? [Measurability, Tasks §T157]
 
 ---
 
@@ -172,16 +172,16 @@
 
 ### Requirement Completeness - Documentation
 
-- [ ] CHK080 - Are README.md (root) requirements specified including sections (overview, features, installation, quick start, architecture diagram)? [Completeness, Tasks §T159, Gap]
-- [ ] CHK081 - Are backend/README.md requirements defined including Python setup, module structure, API reference, and testing instructions? [Completeness, Tasks §T160, Gap]
-- [ ] CHK082 - Are frontend/README.md requirements specified including Tauri setup, Svelte components, IPC contracts, and development workflow? [Completeness, Tasks §T161, Gap]
+- [X] CHK080 - Are README.md (root) requirements specified including sections (overview, features, installation, quick start, architecture diagram)? [Completeness, Tasks §T159, Gap]
+- [X] CHK081 - Are backend/README.md requirements defined including Python setup, module structure, API reference, and testing instructions? [Completeness, Tasks §T160, Gap]
+- [X] CHK082 - Are frontend/README.md requirements specified including Tauri setup, Svelte components, IPC contracts, and development workflow? [Completeness, Tasks §T161, Gap]
 - [ ] CHK083 - Are docstring requirements defined including format (Google/NumPy/Sphinx style), required sections (Args, Returns, Raises), and coverage threshold? [Completeness, Tasks §T162, Gap]
 - [ ] CHK084 - Are quickstart validation requirements specified including test scenarios, success criteria, and validation script? [Completeness, Tasks §T163, Gap]
 - [ ] CHK085 - Are CI workflow requirements defined including lint tools, type checking config, test execution, and failure reporting? [Completeness, Tasks §T164, Gap]
 
 ### Requirement Clarity - Documentation Standards
 
-- [ ] CHK086 - Is "project overview" (T159) defined with specific content requirements (problem statement, solution summary, key features list)? [Clarity, Tasks §T159]
+- [X] CHK086 - Is "project overview" (T159) defined with specific content requirements (problem statement, solution summary, key features list)? [Clarity, Tasks §T159]
 - [ ] CHK087 - Is "all public functions" (T162) explicitly defined (public = exported from module, used by other modules, API endpoints)? [Clarity, Tasks §T162]
 - [ ] CHK088 - Are "linting and type checking" tools (T164) explicitly specified (ruff, mypy, pylint, prettier, eslint, tsc)? [Clarity, Tasks §T164, Gap]
 
@@ -193,7 +193,7 @@
 
 ### Traceability - Documentation
 
-- [ ] CHK092 - Do README requirements trace back to user stories and demonstrate value proposition from Spec §User Scenarios? [Traceability, Tasks §T159-T161]
+- [X] CHK092 - Do README requirements trace back to user stories and demonstrate value proposition from Spec §User Scenarios? [Traceability, Tasks §T159-T161]
 - [ ] CHK093 - Do quickstart validation requirements (T163) align with quickstart.md content? [Traceability, Tasks §T163]
 - [ ] CHK094 - Do CI workflow requirements (T164) align with code quality standards from Constitution? [Traceability, Tasks §T164, Plan §Constitution Check]
 
@@ -203,18 +203,18 @@
 
 ### Requirement Completeness - Build System
 
-- [ ] CHK095 - Are setup.sh script requirements fully specified including dependency checks, installation steps, verification tests, and error handling? [Completeness, Tasks §T165, Gap]
+- [X] CHK095 - Are setup.sh script requirements fully specified including dependency checks, installation steps, verification tests, and error handling? [Completeness, Tasks §T165, Gap]
 - [ ] CHK096 - Are Poetry build configuration requirements defined including package metadata, dependency specifications, entry points, and versioning? [Completeness, Tasks §T166, Gap]
 - [ ] CHK097 - Are Tauri build requirements specified including bundle format (DMG), signing, notarization, and versioning? [Completeness, Tasks §T167, Gap]
-- [ ] CHK098 - Are application icon requirements defined including sizes (16x16 to 1024x1024), formats (PNG, ICNS), and design guidelines? [Completeness, Tasks §T168, Gap]
+- [X] CHK098 - Are application icon requirements defined including sizes (16x16 to 1024x1024), formats (PNG, ICNS), and design guidelines? [Completeness, Tasks §T168, Gap]
 - [ ] CHK099 - Are production build script requirements specified including build order, artifact locations, and validation checks? [Completeness, Tasks §T169, Gap]
 - [ ] CHK100 - Are clean system test requirements defined including test environment specs, test scenarios, and acceptance criteria? [Completeness, Tasks §T170, Gap]
 
 ### Requirement Clarity - Build Configuration
 
-- [ ] CHK101 - Are "install dependencies" requirements (T165) explicitly specified with version constraints and conflict resolution? [Clarity, Tasks §T165]
+- [X] CHK101 - Are "install dependencies" requirements (T165) explicitly specified with version constraints and conflict resolution? [Clarity, Tasks §T165]
 - [ ] CHK102 - Is "bundle DMG for macOS" (T167) defined with specific bundle identifier, version scheme, and signing certificate requirements? [Clarity, Tasks §T167]
-- [ ] CHK103 - Are "verify tools" steps (T165) defined with specific checks (command existence, version validation, permission tests)? [Clarity, Tasks §T165]
+- [X] CHK103 - Are "verify tools" steps (T165) defined with specific checks (command existence, version validation, permission tests)? [Clarity, Tasks §T165]
 
 ### Scenario Coverage - Build & Distribution
 

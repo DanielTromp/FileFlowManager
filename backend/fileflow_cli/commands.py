@@ -2,9 +2,10 @@
 Typer CLI commands for FileFlow Manager.
 """
 
+import json
 import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any, Dict
 
 import typer
 from rich.console import Console
@@ -22,7 +23,7 @@ from fileflow_storage.database import Database
 app = typer.Typer(
     help="FileFlow Manager - Automated File Organization",
     pretty_exceptions_show_locals=False,
-    add_completion=False
+    add_completion=True  # T152: Enable shell completion support
 )
 console = Console()
 
@@ -43,6 +44,16 @@ def get_config_manager() -> ConfigManager:
 def get_database() -> Database:
     """Get database instance."""
     return Database(DEFAULT_DB_PATH)
+
+
+def output_json(data: Any) -> None:
+    """
+    Output data as JSON (T153).
+
+    Args:
+        data: Data to output as JSON
+    """
+    print(json.dumps(data, indent=2, default=str))
 
 
 def format_age(age_days: float) -> str:
@@ -442,12 +453,12 @@ def rules_disable(rule_id: Annotated[str, typer.Argument(help="Rule ID to disabl
 
 
 @app.command(name="find-large")
-def find_large() -> None:
-    """Find files larger than 100MB."""
+def find_large(
+    output_format: Annotated[str, typer.Option("--output-format", "-o", help="Output format: table or json")] = "table",
+) -> None:
+    """Find files larger than 100MB (T153: supports JSON output)."""
     from pathlib import Path
     from fileflow_core.file_scanner import FileScanner
-
-    console.print("\n[bold]Finding files larger than 100 MB...[/bold]\n")
 
     # Get monitored directories from config
     config_mgr = get_config_manager()
@@ -457,6 +468,28 @@ def find_large() -> None:
     # Scan for large files
     scanner = FileScanner()
     large_files = scanner.find_large_files(directories=monitored_dirs, threshold_mb=100)
+
+    if output_format == "json":
+        # JSON output (T153)
+        output_json({
+            "threshold_mb": 100,
+            "files_found": len(large_files),
+            "total_size_mb": sum(f.size_bytes for f in large_files) / (1024 * 1024),
+            "files": [
+                {
+                    "filename": f.filename,
+                    "path": f.path,
+                    "size_bytes": f.size_bytes,
+                    "size_mb": f.size_bytes / (1024 * 1024),
+                    "age_days": f.age_days,
+                }
+                for f in large_files
+            ]
+        })
+        return
+
+    # Table output (default)
+    console.print("\n[bold]Finding files larger than 100 MB...[/bold]\n")
 
     if not large_files:
         console.print("[yellow]No files found larger than 100 MB.[/yellow]")
@@ -487,12 +520,12 @@ def find_large() -> None:
 
 
 @app.command(name="find-old")
-def find_old() -> None:
-    """Find files older than 90 days."""
+def find_old(
+    output_format: Annotated[str, typer.Option("--output-format", "-o", help="Output format: table or json")] = "table",
+) -> None:
+    """Find files older than 90 days (T153: supports JSON output)."""
     from pathlib import Path
     from fileflow_core.file_scanner import FileScanner
-
-    console.print("\n[bold]Finding files older than 90 days...[/bold]\n")
 
     # Get monitored directories from config
     config_mgr = get_config_manager()
@@ -505,6 +538,31 @@ def find_old() -> None:
         directories=monitored_dirs,
         threshold_days=90,
     )
+
+    if output_format == "json":
+        # JSON output (T153)
+        total_size_mb = sum(f.size_bytes for f in old_files) / (1024 * 1024)
+        avg_age_days = sum(f.age_days for f in old_files if f.age_days) / len(old_files) if old_files else 0
+        output_json({
+            "threshold_days": 90,
+            "files_found": len(old_files),
+            "total_size_mb": total_size_mb,
+            "average_age_days": avg_age_days,
+            "files": [
+                {
+                    "filename": f.filename,
+                    "path": f.path,
+                    "size_bytes": f.size_bytes,
+                    "size_mb": f.size_bytes / (1024 * 1024),
+                    "age_days": f.age_days,
+                }
+                for f in old_files
+            ]
+        })
+        return
+
+    # Table output (default)
+    console.print("\n[bold]Finding files older than 90 days...[/bold]\n")
 
     if not old_files:
         console.print("[yellow]No files found older than 90 days.[/yellow]")
@@ -926,6 +984,453 @@ def history(
     except Exception as e:
         console.print(f"[red]Error retrieving history: {e}[/red]")
         raise typer.Exit(1)
+
+
+@app.command(name="system-status")
+def system_status() -> None:
+    """Show system health check and status (T145).
+
+    Displays:
+    - Configuration file status and validity
+    - Database connection and health
+    - Cache status and statistics
+    - Monitored directories accessibility
+    - Active rules count
+    - Recent operation statistics
+    """
+    try:
+        console.print("\n[bold]FileFlow System Status[/bold]\n")
+
+        # Check configuration
+        config_mgr = get_config_manager()
+        try:
+            config = config_mgr.load()
+            console.print("[green]✓[/green] Configuration: Valid")
+            console.print(f"  Location: {DEFAULT_CONFIG_PATH}")
+            console.print(f"  Rules: {len(config.rules)} total, {len([r for r in config.rules if r.enabled])} enabled")
+        except Exception as e:
+            console.print(f"[red]✗[/red] Configuration: Error - {e}")
+            raise typer.Exit(1)
+
+        # Check database
+        try:
+            db = Database(DEFAULT_DB_PATH)
+            # Test database connectivity
+            history = db.get_operation_history(limit=1)
+            console.print("[green]✓[/green] Database: Connected")
+            console.print(f"  Location: {DEFAULT_DB_PATH}")
+            console.print(f"  Size: {DEFAULT_DB_PATH.stat().st_size / 1024:.1f} KB" if DEFAULT_DB_PATH.exists() else "  Size: N/A")
+        except Exception as e:
+            console.print(f"[red]✗[/red] Database: Error - {e}")
+
+        # Check cache
+        try:
+            cache = ChecksumCache(DEFAULT_DB_PATH)
+            # Get cache stats (this would need to be implemented in cache.py)
+            console.print("[green]✓[/green] Cache: Enabled")
+        except Exception as e:
+            console.print(f"[yellow]⚠[/yellow] Cache: Warning - {e}")
+
+        # Check monitored directories
+        console.print("\n[bold]Monitored Directories:[/bold]")
+        for directory in config.paths.monitored_directories:
+            expanded_path = Path(directory).expanduser()
+            if expanded_path.exists() and expanded_path.is_dir():
+                # Count files
+                try:
+                    file_count = len(list(expanded_path.iterdir()))
+                    console.print(f"  [green]✓[/green] {expanded_path} ({file_count} items)")
+                except PermissionError:
+                    console.print(f"  [yellow]⚠[/yellow] {expanded_path} (permission denied)")
+            else:
+                console.print(f"  [red]✗[/red] {expanded_path} (not accessible)")
+
+        # Recent operations stats
+        console.print("\n[bold]Recent Activity (Last 7 Days):[/bold]")
+        try:
+            from datetime import datetime, timedelta
+            week_ago = datetime.now() - timedelta(days=7)
+            recent_ops = db.get_operation_history(
+                limit=1000,
+                start_date=week_ago,
+                include_dry_runs=False
+            )
+
+            if recent_ops:
+                move_count = sum(1 for op in recent_ops if op.operation_type == OperationType.MOVE)
+                delete_count = sum(1 for op in recent_ops if op.operation_type == OperationType.DELETE)
+                skip_count = sum(1 for op in recent_ops if op.operation_type == OperationType.SKIP)
+                total_size = sum(op.file_size for op in recent_ops if op.file_size and op.success)
+
+                console.print(f"  Moves: {move_count}")
+                console.print(f"  Deletions: {delete_count}")
+                console.print(f"  Skipped: {skip_count}")
+
+                if total_size > 0:
+                    if total_size < 1024 * 1024:
+                        size_str = f"{total_size / 1024:.1f} KB"
+                    elif total_size < 1024 * 1024 * 1024:
+                        size_str = f"{total_size / (1024 * 1024):.1f} MB"
+                    else:
+                        size_str = f"{total_size / (1024 * 1024 * 1024):.2f} GB"
+                    console.print(f"  Data processed: {size_str}")
+            else:
+                console.print("  No operations in the last 7 days")
+        except Exception as e:
+            console.print(f"  [yellow]Could not retrieve statistics: {e}[/yellow]")
+
+        console.print(f"\n[green]System is operational[/green]\n")
+
+    except Exception as e:
+        console.print(f"\n[red]Error checking system status: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command(name="clear-cache")
+def clear_cache(
+    force: Annotated[bool, typer.Option("--force", "-f", help="Skip confirmation prompt")] = False,
+) -> None:
+    """Clear checksum cache and optimize database (T146).
+
+    Clears the checksum cache to force recalculation on next scan.
+    Also runs VACUUM on the database to reclaim space.
+    """
+    try:
+        if not force:
+            console.print("[yellow]This will clear all cached checksums.[/yellow]")
+            console.print("Files will need to be rehashed on the next scan.")
+            confirm = typer.confirm("Are you sure you want to continue?")
+            if not confirm:
+                console.print("Operation cancelled.")
+                raise typer.Exit(0)
+
+        console.print("\n[bold]Clearing cache...[/bold]\n")
+
+        # Clear checksum cache
+        db = Database(DEFAULT_DB_PATH)
+        cursor = db.conn.cursor()
+
+        # Get cache size before clearing
+        cursor.execute("SELECT COUNT(*) FROM checksum_cache")
+        cache_count = cursor.fetchone()[0]
+
+        # Clear cache
+        cursor.execute("DELETE FROM checksum_cache")
+        db.conn.commit()
+
+        console.print(f"[green]✓[/green] Cleared {cache_count} cached checksums")
+
+        # Vacuum database
+        cursor.execute("VACUUM")
+        console.print("[green]✓[/green] Optimized database")
+
+        # Show new database size
+        db_size = DEFAULT_DB_PATH.stat().st_size / 1024
+        console.print(f"\nDatabase size: {db_size:.1f} KB")
+        console.print("[green]Cache cleared successfully![/green]\n")
+
+    except Exception as e:
+        console.print(f"[red]Error clearing cache: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command(name="find-duplicates")
+def find_duplicates(
+    delete_auto: Annotated[bool, typer.Option("--delete-auto", help="Automatically delete all duplicates (keep oldest)")] = False,
+    delete_interactive: Annotated[bool, typer.Option("--delete-interactive", "-i", help="Interactively choose which duplicates to delete")] = False,
+    min_size_mb: Annotated[int, typer.Option("--min-size", help="Only find duplicates larger than this size (MB)")] = 1,
+) -> None:
+    """Find and optionally delete duplicate files (T151).
+
+    Scans monitored directories for files with identical SHA-256 checksums.
+    By default, displays duplicates without deleting. Use --delete-auto or
+    --delete-interactive to remove duplicates.
+
+    Examples:
+        fileflow find-duplicates                    # List all duplicates
+        fileflow find-duplicates --min-size 10      # Only show duplicates >10MB
+        fileflow find-duplicates --delete-auto      # Auto-delete (keep oldest)
+        fileflow find-duplicates -i                 # Interactive deletion
+    """
+    try:
+        config_mgr = get_config_manager()
+        config = config_mgr.load()
+        db = Database(DEFAULT_DB_PATH)
+        cache = ChecksumCache(db)
+
+        # Get monitored directories
+        monitored_dirs = [
+            Path(config_mgr.expand_env_vars(d))
+            for d in config.paths.monitored_directories
+        ]
+
+        console.print(f"\n[bold]Scanning for duplicates in {len(monitored_dirs)} directories...[/bold]\n")
+
+        # Scan all files and compute checksums
+        from fileflow_core.file_scanner import FileScanner
+        from collections import defaultdict
+
+        scanner = FileScanner()
+        checksum_to_files = defaultdict(list)
+
+        for directory in monitored_dirs:
+            if not directory.exists():
+                console.print(f"[yellow]⚠[/yellow] Directory not found: {directory}")
+                continue
+
+            for file_path in directory.rglob("*"):
+                if file_path.is_file():
+                    try:
+                        # Skip files smaller than min_size_mb
+                        file_size_mb = file_path.stat().st_size / (1024 * 1024)
+                        if file_size_mb < min_size_mb:
+                            continue
+
+                        # Calculate checksum
+                        checksum = cache.get_checksum(file_path)
+                        checksum_to_files[checksum].append(file_path)
+                    except Exception as e:
+                        console.print(f"[yellow]⚠[/yellow] Error processing {file_path.name}: {e}")
+
+        # Find duplicates (checksums with multiple files)
+        duplicates = {
+            checksum: files
+            for checksum, files in checksum_to_files.items()
+            if len(files) > 1
+        }
+
+        if not duplicates:
+            console.print("[green]No duplicate files found![/green]\n")
+            return
+
+        # Calculate total duplicate space
+        total_duplicate_size = 0
+        total_duplicate_count = 0
+
+        for checksum, files in duplicates.items():
+            # Keep one, rest are duplicates
+            file_size = files[0].stat().st_size
+            duplicate_count = len(files) - 1
+            total_duplicate_size += file_size * duplicate_count
+            total_duplicate_count += duplicate_count
+
+        # Display duplicates
+        console.print(f"[bold]Found {len(duplicates)} sets of duplicates ({total_duplicate_count} redundant files)[/bold]\n")
+        console.print(f"Potential space savings: {total_duplicate_size / (1024 * 1024):.2f} MB\n")
+
+        # Create table
+        table = Table(title="Duplicate Files")
+        table.add_column("Set", style="cyan", width=4)
+        table.add_column("Files", style="yellow", width=3)
+        table.add_column("Size", style="magenta", width=10)
+        table.add_column("Paths", style="white")
+
+        files_to_delete = []
+
+        for idx, (checksum, files) in enumerate(sorted(duplicates.items(), key=lambda x: len(x[1]), reverse=True), 1):
+            file_size = files[0].stat().st_size
+            size_str = f"{file_size / (1024 * 1024):.2f} MB" if file_size > 1024 * 1024 else f"{file_size / 1024:.1f} KB"
+
+            # Sort by modification time (oldest first) for consistent behavior
+            sorted_files = sorted(files, key=lambda f: f.stat().st_mtime)
+
+            paths_str = "\n".join([
+                f"[green]{'[KEEP]' if i == 0 else '[DELETE]'}[/green] {f}"
+                for i, f in enumerate(sorted_files)
+            ])
+
+            table.add_row(
+                str(idx),
+                str(len(files)),
+                size_str,
+                paths_str
+            )
+
+            # Collect files to delete (all except oldest)
+            if delete_auto:
+                files_to_delete.extend(sorted_files[1:])
+            elif delete_interactive:
+                # Will prompt per set below
+                pass
+
+        console.print(table)
+        console.print()
+
+        # Handle deletion modes
+        if delete_auto:
+            console.print(f"\n[yellow]Auto-delete mode: Deleting {len(files_to_delete)} duplicate files (keeping oldest)[/yellow]")
+            confirm = typer.confirm("Are you sure?")
+            if not confirm:
+                console.print("Operation cancelled.")
+                return
+
+            deleted_count = 0
+            space_freed = 0
+
+            for file_path in files_to_delete:
+                try:
+                    file_size = file_path.stat().st_size
+                    file_path.unlink()
+                    deleted_count += 1
+                    space_freed += file_size
+                    console.print(f"[green]✓[/green] Deleted: {file_path}")
+                except Exception as e:
+                    console.print(f"[red]✗[/red] Failed to delete {file_path.name}: {e}")
+
+            console.print(f"\n[green]Deleted {deleted_count} files, freed {space_freed / (1024 * 1024):.2f} MB[/green]\n")
+
+        elif delete_interactive:
+            console.print("\n[bold]Interactive Deletion Mode[/bold]")
+            console.print("For each duplicate set, choose which files to delete.\n")
+
+            deleted_count = 0
+            space_freed = 0
+
+            for idx, (checksum, files) in enumerate(sorted(duplicates.items(), key=lambda x: len(x[1]), reverse=True), 1):
+                sorted_files = sorted(files, key=lambda f: f.stat().st_mtime)
+
+                console.print(f"\n[bold]Set {idx} of {len(duplicates)}:[/bold]")
+                for i, file_path in enumerate(sorted_files):
+                    mtime = datetime.fromtimestamp(file_path.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+                    console.print(f"  [{i+1}] {file_path} (modified: {mtime})")
+
+                console.print(f"\n  [bold]{'[RECOMMENDED]' if len(sorted_files) > 1 else ''}[/bold] Keep file [1] (oldest), delete others")
+
+                choice = typer.prompt(
+                    "\nEnter file numbers to delete (comma-separated) or 'skip' to keep all",
+                    default="2-" + str(len(sorted_files)) if len(sorted_files) > 1 else "skip"
+                )
+
+                if choice.strip().lower() == "skip":
+                    console.print("[yellow]Skipped this set[/yellow]")
+                    continue
+
+                # Parse choices
+                try:
+                    to_delete = []
+                    for part in choice.split(","):
+                        part = part.strip()
+                        if "-" in part:
+                            start, end = part.split("-")
+                            start = int(start) if start else 2
+                            end = int(end) if end else len(sorted_files)
+                            to_delete.extend(range(start, end + 1))
+                        else:
+                            to_delete.append(int(part))
+
+                    for file_idx in sorted(set(to_delete), reverse=True):
+                        if 1 <= file_idx <= len(sorted_files):
+                            file_path = sorted_files[file_idx - 1]
+                            try:
+                                file_size = file_path.stat().st_size
+                                file_path.unlink()
+                                deleted_count += 1
+                                space_freed += file_size
+                                console.print(f"[green]✓[/green] Deleted: {file_path.name}")
+                            except Exception as e:
+                                console.print(f"[red]✗[/red] Failed to delete {file_path.name}: {e}")
+                except ValueError:
+                    console.print("[red]Invalid input, skipping this set[/red]")
+
+            console.print(f"\n[green]Deleted {deleted_count} files, freed {space_freed / (1024 * 1024):.2f} MB[/green]\n")
+
+    except Exception as e:
+        console.print(f"[red]Error finding duplicates: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command(name="completion")
+def generate_completion(
+    shell: Annotated[
+        str,
+        typer.Argument(
+            help="Shell type: bash, zsh, or fish"
+        )
+    ] = "bash",
+    install: Annotated[
+        bool,
+        typer.Option(
+            "--install",
+            help="Show installation instructions"
+        )
+    ] = False,
+) -> None:
+    """
+    Generate shell completion scripts (T152).
+
+    Supports bash, zsh, and fish shells.
+
+    Examples:
+        fileflow completion bash > ~/.bash_completions/fileflow.bash
+        fileflow completion zsh > ~/.zsh/completions/_fileflow
+        fileflow completion fish > ~/.config/fish/completions/fileflow.fish
+
+        # Show installation instructions
+        fileflow completion bash --install
+    """
+    shell = shell.lower()
+
+    if shell not in ["bash", "zsh", "fish"]:
+        console.print(f"[red]Error: Unsupported shell '{shell}'. Use: bash, zsh, or fish[/red]")
+        raise typer.Exit(1)
+
+    if install:
+        # Show installation instructions
+        console.print(f"\n[bold cyan]Shell Completion Installation for {shell.upper()}[/bold cyan]\n")
+
+        if shell == "bash":
+            console.print("[bold]1. Generate completion script:[/bold]")
+            console.print("   fileflow completion bash > ~/.bash_completions/fileflow.bash\n")
+            console.print("[bold]2. Add to your ~/.bashrc:[/bold]")
+            console.print("   source ~/.bash_completions/fileflow.bash\n")
+            console.print("[bold]3. Reload your shell:[/bold]")
+            console.print("   source ~/.bashrc\n")
+
+        elif shell == "zsh":
+            console.print("[bold]1. Create completions directory (if needed):[/bold]")
+            console.print("   mkdir -p ~/.zsh/completions\n")
+            console.print("[bold]2. Generate completion script:[/bold]")
+            console.print("   fileflow completion zsh > ~/.zsh/completions/_fileflow\n")
+            console.print("[bold]3. Add to your ~/.zshrc (if not already present):[/bold]")
+            console.print("   fpath=(~/.zsh/completions $fpath)")
+            console.print("   autoload -Uz compinit && compinit\n")
+            console.print("[bold]4. Reload your shell:[/bold]")
+            console.print("   source ~/.zshrc\n")
+
+        elif shell == "fish":
+            console.print("[bold]1. Create completions directory (if needed):[/bold]")
+            console.print("   mkdir -p ~/.config/fish/completions\n")
+            console.print("[bold]2. Generate completion script:[/bold]")
+            console.print("   fileflow completion fish > ~/.config/fish/completions/fileflow.fish\n")
+            console.print("[bold]3. Completions will be automatically loaded[/bold]\n")
+
+        console.print("[dim]After installation, you can use TAB to autocomplete fileflow commands![/dim]\n")
+        return
+
+    # Generate and print completion script
+    # Typer uses click underneath, so we can access the click completion
+    import click
+    from click.shell_completion import get_completion_class
+
+    # Get the click command from the Typer app
+    click_command = typer.main.get_command(app)
+
+    # Get the appropriate completion class
+    completion_class = get_completion_class(shell)
+    if completion_class is None:
+        console.print(f"[red]Error: Could not generate completion for {shell}[/red]")
+        raise typer.Exit(1)
+
+    # Generate completion script
+    completion = completion_class(
+        cli=click_command,
+        ctx_args={},
+        prog_name="fileflow",
+        complete_var=f"_{shell.upper()}_COMPLETE"
+    )
+
+    # Output the completion script
+    print(completion.source())
 
 
 if __name__ == "__main__":

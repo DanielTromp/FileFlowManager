@@ -1,20 +1,79 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { scanFiles, getOperationHistory } from '../lib/api';
   import { scanStore, scanActions } from '../lib/stores/scan';
   import ProgressBar from '../lib/components/ProgressBar.svelte';
   import ConfirmDialog from '../lib/components/ConfirmDialog.svelte';
+  import KeyboardShortcutsHelp from '../lib/components/KeyboardShortcutsHelp.svelte';
+  import { registerShortcuts, type ShortcutGroup } from '../lib/keyboardShortcuts';
+  import { notifyScanComplete, notifyExecutionComplete } from '../lib/notifications';
 
   let showConfirmExecute = false;
+  let showShortcutsHelp = false;
   let lastScanTime: string | null = null;
   let activeRuleCount = 0;
   let operationHistory: any[] = [];
   let loadingHistory = false;
+  let cleanupShortcuts: (() => void) | null = null;
+
+  // Define keyboard shortcuts for this page (T154)
+  const shortcutGroups: ShortcutGroup[] = [
+    {
+      name: 'Actions',
+      shortcuts: [
+        {
+          key: 's',
+          meta: true,
+          description: 'Start Dry Run Scan',
+          handler: handleDryRunScan,
+        },
+        {
+          key: 'r',
+          meta: true,
+          description: 'Refresh History',
+          handler: loadOperationHistory,
+        },
+        {
+          key: 'e',
+          meta: true,
+          shift: true,
+          description: 'Execute Operations',
+          handler: () => {
+            if (lastResult && !isScanning) {
+              showConfirmExecute = true;
+            }
+          },
+        },
+      ],
+    },
+    {
+      name: 'Help',
+      shortcuts: [
+        {
+          key: '?',
+          shift: true,
+          description: 'Show Keyboard Shortcuts',
+          handler: () => (showShortcutsHelp = true),
+        },
+      ],
+    },
+  ];
 
   onMount(async () => {
     // Initialize
     lastScanTime = new Date().toLocaleString();
     await loadOperationHistory();
+
+    // Register keyboard shortcuts (T154)
+    const allShortcuts = shortcutGroups.flatMap((group) => group.shortcuts);
+    cleanupShortcuts = registerShortcuts(allShortcuts);
+  });
+
+  onDestroy(() => {
+    // Cleanup keyboard shortcuts
+    if (cleanupShortcuts) {
+      cleanupShortcuts();
+    }
   });
 
   async function loadOperationHistory() {
@@ -36,6 +95,9 @@
       console.log('Scan result:', result);
       scanActions.completeScan(result);
       lastScanTime = new Date().toLocaleString();
+
+      // Send notification (T158)
+      await notifyScanComplete(result.files_matched, result.planned_operations.length);
     } catch (error) {
       console.error('Scan error:', error);
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -52,6 +114,13 @@
       const result = await scanFiles({ dry_run: false });
       scanActions.completeScan(result);
       showConfirmExecute = false;
+
+      // Send notification (T158)
+      const successCount = result.planned_operations.filter(op => !op.error_message).length;
+      const failedCount = result.planned_operations.filter(op => op.error_message).length;
+      const spaceFree = result.estimated_space_freed_mb || 0;
+      await notifyExecutionComplete(successCount, failedCount, spaceFree);
+
       // Refresh operation history after execution
       await loadOperationHistory();
     } catch (error) {
@@ -66,9 +135,22 @@
 
 <div class="space-y-6">
   <!-- Header -->
-  <div>
-    <h1 class="text-3xl font-bold">Dashboard</h1>
-    <p class="text-base-content/60 mt-1">Scan and organize your files</p>
+  <div class="flex justify-between items-start">
+    <div>
+      <h1 class="text-3xl font-bold">Dashboard</h1>
+      <p class="text-base-content/60 mt-1">Scan and organize your files</p>
+    </div>
+    <!-- Keyboard Shortcuts Help Button (T154) -->
+    <button
+      class="btn btn-ghost btn-sm"
+      on:click={() => (showShortcutsHelp = true)}
+      title="Keyboard Shortcuts (Shift+?)"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span class="ml-1">Help</span>
+    </button>
   </div>
 
   <!-- Status Cards -->
@@ -299,4 +381,11 @@
   confirmText="Execute"
   dangerous={true}
   onConfirm={handleExecute}
+/>
+
+<!-- Keyboard Shortcuts Help Modal (T154) -->
+<KeyboardShortcutsHelp
+  bind:isOpen={showShortcutsHelp}
+  {shortcutGroups}
+  onClose={() => (showShortcutsHelp = false)}
 />

@@ -3,6 +3,7 @@
   import { getLargeFiles, deleteFiles } from '../lib/api';
   import type { FileMetadata } from '../lib/types';
   import { confirm } from '@tauri-apps/api/dialog';
+  import { notifyDeletionComplete } from '../lib/notifications';
 
   // State
   let threshold = 100; // MB
@@ -85,6 +86,9 @@
 
     try {
       const result = await deleteFiles(Array.from(selectedFiles), true);
+
+      // Send notification (T158)
+      await notifyDeletionComplete(result.deleted_count, result.space_freed_mb);
 
       // Show result
       alert(
