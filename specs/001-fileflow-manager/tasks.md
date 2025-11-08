@@ -337,7 +337,7 @@ This is a **web application architecture** project:
 ### Performance Optimization
 
 - [X] T141 [P] Add checksum caching optimization in backend/fileflow_storage/cache.py (avoid recalculation)
-- [X] T142 [P] Optimize parallel scanning in backend/fileflow_core/file_scanner.py (ThreadPoolExecutor tuning)
+- [X] T142 [P] Opti/mize parallel scanning in backend/fileflow_core/file_scanner.py (ThreadPoolExecutor tuning)
 - [ ] T143 [P] Add operation cancellation support in backend/fileflow_api/tauri_commands.py (cancel_operation command)
 - [ ] T144 [P] Implement progress events for all long operations in backend/fileflow_api/tauri_commands.py (>5 seconds)
 

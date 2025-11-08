@@ -110,14 +110,13 @@
 
     scanActions.startScan();
     try {
-      const operationIds = $scanStore.lastScanResult.planned_operations.map((op) => op.id);
       const result = await scanFiles({ dry_run: false });
       scanActions.completeScan(result);
       showConfirmExecute = false;
 
       // Send notification (T158)
-      const successCount = result.planned_operations.filter(op => !op.error_message).length;
-      const failedCount = result.planned_operations.filter(op => op.error_message).length;
+      const successCount = result.planned_operations.filter(op => op.success && !op.error_message).length;
+      const failedCount = result.planned_operations.filter(op => !op.success || op.error_message).length;
       const spaceFree = result.estimated_space_freed_mb || 0;
       await notifyExecutionComplete(successCount, failedCount, spaceFree);
 
@@ -193,7 +192,7 @@
           on:click={handleDryRunScan}
           disabled={isScanning}
         >
-          {isScanning ? 'Scanning...' : 'Dry Run Scan'}
+          {isScanning ? 'Scanning...' : 'Scan Now'}
         </button>
 
         <button

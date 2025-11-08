@@ -4,9 +4,10 @@ Rule engine for FileFlow Manager.
 Orchestrates file organization based on rules with priority ordering.
 """
 
+import threading
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Set
 
 from fileflow_core.date_organizer import DateOrganizer
 from fileflow_core.duplicate_detector import DuplicateDetector
@@ -27,6 +28,10 @@ from fileflow_storage.database import Database
 
 class RuleEngine:
     """Execute file organization rules."""
+
+    # Class-level cancellation tracking
+    _cancelled_operations: Set[str] = set()
+    _lock = threading.Lock()
 
     def __init__(
         self,
@@ -165,49 +170,95 @@ class RuleEngine:
             scan_duration_ms=duration_ms,
         )
 
+    @classmethod
+    def cancel_operation(cls, operation_id: str) -> bool:
+        """
+        Cancel an ongoing operation.
+
+        Args:
+            operation_id: The ID of the operation to cancel
+
+        Returns:
+            True if the cancellation was registered
+        """
+        with cls._lock:
+            cls._cancelled_operations.add(operation_id)
+        return True
+
+    @classmethod
+    def is_cancelled(cls, operation_id: str) -> bool:
+        """Check if an operation has been cancelled."""
+        with cls._lock:
+            return operation_id in cls._cancelled_operations
+
+    @classmethod
+    def clear_cancellation(cls, operation_id: str):
+        """Clear a cancellation flag after operation completes."""
+        with cls._lock:
+            cls._cancelled_operations.discard(operation_id)
+
     def execute(
         self,
         operations: List[FileOperation],
         progress_callback: Optional[Callable[[str], None]] = None,
+        operation_id: Optional[str] = None,
     ) -> List[FileOperation]:
         """
-        Execute file operations.
+        Execute file operations with cancellation support.
 
         Args:
             operations: List of operations to execute
             progress_callback: Optional callback for progress updates
+            operation_id: Optional ID for cancellation tracking
 
         Returns:
             List of executed operations with results
         """
         executed_operations = []
+        cancelled = False
 
-        for operation in operations:
-            if progress_callback:
-                progress_callback(f"Processing: {Path(operation.source_path).name}")
+        try:
+            for i, operation in enumerate(operations):
+                # Check for cancellation
+                if operation_id and self.is_cancelled(operation_id):
+                    cancelled = True
+                    # Mark remaining operations as cancelled
+                    for remaining_op in operations[i:]:
+                        remaining_op.success = False
+                        remaining_op.error_message = "Operation cancelled by user"
+                        executed_operations.append(remaining_op)
+                    break
 
-            # Update to non-dry-run
-            operation.dry_run = False
+                if progress_callback:
+                    progress_callback(f"Processing: {Path(operation.source_path).name}")
 
-            if operation.operation_type == OperationType.MOVE:
-                success, error = self.file_ops.move_file(
-                    Path(operation.source_path),
-                    Path(operation.destination_path or ""),
-                    preserve_metadata=True,
-                )
-                operation.success = success
-                operation.error_message = error
+                # Update to non-dry-run
+                operation.dry_run = False
 
-            elif operation.operation_type == OperationType.DELETE:
-                success, error = self.file_ops.delete_file(
-                    Path(operation.source_path)
-                )
-                operation.success = success
-                operation.error_message = error
+                if operation.operation_type == OperationType.MOVE:
+                    success, error = self.file_ops.move_file(
+                        Path(operation.source_path),
+                        Path(operation.destination_path or ""),
+                        preserve_metadata=True,
+                    )
+                    operation.success = success
+                    operation.error_message = error
 
-            # Log operation
-            self.db.log_operation(operation)
-            executed_operations.append(operation)
+                elif operation.operation_type == OperationType.DELETE:
+                    success, error = self.file_ops.delete_file(
+                        Path(operation.source_path)
+                    )
+                    operation.success = success
+                    operation.error_message = error
+
+                # Log operation
+                self.db.log_operation(operation)
+                executed_operations.append(operation)
+
+        finally:
+            # Clean up cancellation flag
+            if operation_id:
+                self.clear_cancellation(operation_id)
 
         return executed_operations
 

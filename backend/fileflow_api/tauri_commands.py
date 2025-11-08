@@ -8,6 +8,7 @@ Commands are invoked from the Svelte frontend via Tauri's invoke() API.
 import json
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -128,12 +129,41 @@ def scan_files(dry_run: bool = True, rule_ids: Optional[List[str]] = None) -> Di
         # Run scan
         result = engine.scan(rule_list, dry_run=dry_run)
 
+        # If not dry run, execute the operations
+        if not dry_run and result.planned_operations:
+            logger.info(f"Executing {len(result.planned_operations)} operations")
+            import uuid
+            operation_id = str(uuid.uuid4())
+            start_time = time.time()
+            total_operations = len(result.planned_operations)
+
+            # Progress tracking for long operations
+            executed_ops = []
+            for i, op in enumerate(result.planned_operations):
+                elapsed = time.time() - start_time
+                if elapsed > 5:  # Emit progress after 5 seconds
+                    progress_data = {
+                        "type": "scan_execution_progress",
+                        "operation_id": operation_id,
+                        "message": f"Executing: {Path(op.source_path).name}",
+                        "current": i + 1,
+                        "total": total_operations,
+                        "elapsed_seconds": elapsed
+                    }
+                    print(f"PROGRESS:{json.dumps(progress_data)}", file=sys.stderr)
+
+                executed_op = engine.execute([op], operation_id=operation_id)[0]
+                executed_ops.append(executed_op)
+
+            # Update result with executed operations
+            result.planned_operations = executed_ops
+
         # Convert to dict for JSON serialization
         result_dict = result.model_dump(mode="json")
 
         logger.info(
             f"Scan complete: {result.files_matched} files matched, "
-            f"{len(result.planned_operations)} operations planned"
+            f"{len(result.planned_operations)} operations {'executed' if not dry_run else 'planned'}"
         )
 
         return result_dict
@@ -228,8 +258,44 @@ def execute_operations(
                             }
                         )
 
-        # Execute operations
-        executed = engine.execute(operations_to_execute)
+        # Generate operation ID for cancellation tracking
+        import uuid
+        import time
+        operation_id = str(uuid.uuid4())
+
+        # Track progress for long operations
+        start_time = time.time()
+        total_operations = len(operations_to_execute)
+
+        def progress_callback(message: str, current: int = None):
+            """Emit progress events for long-running operations."""
+            elapsed = time.time() - start_time
+            if elapsed > 5:  # Only emit events after 5 seconds
+                progress_data = {
+                    "type": "operation_progress",
+                    "operation_id": operation_id,
+                    "message": message,
+                    "current": current,
+                    "total": total_operations,
+                    "elapsed_seconds": elapsed
+                }
+                # Print to stderr so it doesn't interfere with stdout result
+                print(f"PROGRESS:{json.dumps(progress_data)}", file=sys.stderr)
+
+        # Execute operations with cancellation and progress support
+        executed = []
+        for i, op in enumerate(operations_to_execute):
+            if operation_id and engine.is_cancelled(operation_id):
+                # Mark remaining as cancelled
+                for remaining_op in operations_to_execute[i:]:
+                    remaining_op.success = False
+                    remaining_op.error_message = "Operation cancelled by user"
+                    executed.append(remaining_op)
+                break
+
+            progress_callback(f"Processing: {Path(op.source_path).name}", i + 1)
+            executed_op = engine.execute([op], operation_id=operation_id)[0]
+            executed.append(executed_op)
 
         # Build result
         success_count = sum(1 for op in executed if op.success)
@@ -267,6 +333,42 @@ def execute_operations(
             "EXECUTION_FAILED",
             f"Execution operation failed: {str(e)}",
             {"original_error": str(e), "type": type(e).__name__}
+        )
+
+
+def cancel_operation(operation_id: str) -> Dict[str, Any]:
+    """
+    Cancel an ongoing operation.
+
+    Args:
+        operation_id: The ID of the operation to cancel
+
+    Returns:
+        Success status
+
+    Raises:
+        CommandError: If cancellation fails
+    """
+    try:
+        from fileflow_core.rule_engine import RuleEngine
+
+        # Register the cancellation
+        success = RuleEngine.cancel_operation(operation_id)
+
+        logger.info(f"Cancellation requested for operation {operation_id}")
+
+        return {
+            "success": success,
+            "operation_id": operation_id,
+            "message": "Cancellation requested successfully"
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to cancel operation {operation_id}: {e}", exc_info=True)
+        raise CommandError(
+            "CANCEL_FAILED",
+            f"Failed to cancel operation: {str(e)}",
+            {"operation_id": operation_id, "error": str(e)}
         )
 
 
@@ -935,6 +1037,8 @@ if __name__ == "__main__":
                 result = scan_files(**args)
             elif command == "execute_operations":
                 result = execute_operations(**args)
+            elif command == "cancel_operation":
+                result = cancel_operation(**args)
             elif command == "get_rules":
                 result = get_rules()
             elif command == "get_configuration":

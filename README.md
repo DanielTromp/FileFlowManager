@@ -7,6 +7,7 @@ Status: Development - Phase 7 Complete (All User Stories), Phase 8 in Progress (
 
 ## Overview
 
+Started as a Spec Kit https://github.com/github/spec-kit test and worked like a charm, now available for Mac.
 FileFlow Manager is an intelligent, automated file organization system for macOS that helps you keep your files organized using extensible rule-based management. It automatically organizes screenshots by date, allows custom organization rules for any file type, identifies large and old files for cleanup, and supports configuration import/export for portability across machines.
 
 **Key Features:**

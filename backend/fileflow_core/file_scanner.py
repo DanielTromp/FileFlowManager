@@ -28,16 +28,29 @@ class FileScanner:
         exclude_patterns: Optional[List[str]] = None,
         recursive: bool = True,
         progress_callback: Optional[Callable[[str], None]] = None,
+        exclude_dirs: Optional[List[Path]] = None,
     ) -> List[FileMetadata]:
         """Scan a single directory for matching files."""
         files = []
         patterns = patterns or ["*"]
         exclude_patterns = exclude_patterns or []
+        exclude_dirs = exclude_dirs or []
 
         try:
             if recursive:
                 # Recursive scan
-                for root, _, filenames in os.walk(directory):
+                for root, dirs, filenames in os.walk(directory):
+                    # Remove excluded directories from dirs list to prevent os.walk from descending into them
+                    root_path = Path(root)
+                    dirs_to_remove = []
+                    for dirname in dirs:
+                        dir_path = root_path / dirname
+                        # Check if this directory should be excluded
+                        if any(dir_path == exclude_dir or dir_path.is_relative_to(exclude_dir) or exclude_dir.is_relative_to(dir_path) for exclude_dir in exclude_dirs):
+                            dirs_to_remove.append(dirname)
+                    for dirname in dirs_to_remove:
+                        dirs.remove(dirname)
+
                     for filename in filenames:
                         if progress_callback:
                             progress_callback(filename)
@@ -92,7 +105,9 @@ class FileScanner:
         directories: List[Path],
         patterns: Optional[List[str]] = None,
         exclude_patterns: Optional[List[str]] = None,
+        recursive: bool = True,
         progress_callback: Optional[Callable[[str], None]] = None,
+        exclude_dirs: Optional[List[Path]] = None,
     ) -> List[FileMetadata]:
         """Scan multiple directories in parallel."""
         all_files = []
@@ -104,8 +119,9 @@ class FileScanner:
                     directory,
                     patterns,
                     exclude_patterns,
-                    True,
+                    recursive,
                     progress_callback,
+                    exclude_dirs,
                 )
                 for directory in directories
             ]
@@ -136,12 +152,30 @@ class FileScanner:
         if not directories:
             return []
 
+        # Expand destination and check if we need to exclude it
+        destination = Path(expand_env_vars(rule.destination))
+        exclude_dirs_list = []
+
+        # If destination is a subdirectory of any source, exclude it from scanning
+        for source_dir in directories:
+            try:
+                # Check if destination is relative to this source directory
+                destination.relative_to(source_dir)
+                # Add destination to exclude list
+                exclude_dirs_list.append(destination)
+                break
+            except ValueError:
+                # destination is not a subdirectory of this source, continue
+                pass
+
         # Scan with rule patterns
         files = self.scan_directories_parallel(
             directories,
             patterns=rule.source_patterns,
             exclude_patterns=rule.exclude_patterns,
+            recursive=rule.recursive_search,
             progress_callback=progress_callback,
+            exclude_dirs=exclude_dirs_list,
         )
 
         # Additional filtering based on rule constraints

@@ -42,6 +42,8 @@ class Rule(BaseModel):
     source_directories: List[str] = Field(..., min_length=1)
     destination: str
     organize_by_date: bool = False
+    detect_duplicates: bool = True
+    recursive_search: bool = True
     file_types: List[str] = Field(..., min_length=1)
     priority: int = Field(10, ge=1, le=1000)
     exclude_patterns: List[str] = Field(default_factory=list)
