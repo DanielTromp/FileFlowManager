@@ -2,8 +2,14 @@
 export default {
   content: ['./src/**/*.{html,js,svelte,ts}'],
   safelist: [
-    // Protect DaisyUI loading spinner classes from being purged in production builds
-    { pattern: /^loading/ },
+    // Protect DaisyUI loading spinner classes and animations from being purged in production builds
+    'loading',
+    'loading-spinner',
+    'loading-xs',
+    'loading-sm',
+    'loading-md',
+    'loading-lg',
+    { pattern: /loading/ },
   ],
   theme: {
     extend: {},
