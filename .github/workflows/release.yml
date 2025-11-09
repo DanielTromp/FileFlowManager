@@ -60,6 +60,22 @@ jobs:
           echo "Backend executable size:"
           du -h backend/dist/fileflow-backend
 
+      - name: Prepare backend for Tauri bundling
+        run: |
+          # Detect architecture
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "arm64" ]; then
+            TARGET_TRIPLE="aarch64-apple-darwin"
+          else
+            TARGET_TRIPLE="x86_64-apple-darwin"
+          fi
+
+          # Copy backend with architecture-specific name
+          cp backend/dist/fileflow-backend backend/dist/fileflow-backend-${TARGET_TRIPLE}
+
+          echo "Created backend binary: fileflow-backend-${TARGET_TRIPLE}"
+          ls -lh backend/dist/
+
       # Setup Node.js and pnpm for frontend
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
