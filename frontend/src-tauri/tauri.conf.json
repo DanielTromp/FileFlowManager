@@ -73,7 +73,7 @@
           "height": 400
         }
       },
-      "resources": [],
+      "resources": ["../../backend/dist/fileflow-backend"],
       "shortDescription": "Automated file organization for macOS",
       "targets": ["dmg", "app"],
       "windows": {

@@ -1,45 +1,41 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { ask } from '@tauri-apps/api/dialog';
-  import { getRules, toggleRule, deleteRule } from '../lib/api';
+  import { toggleRule as apiToggleRule, deleteRule as apiDeleteRule } from '../lib/api';
   import type { Rule } from '../lib/types';
   import RuleEditor from '../lib/components/RuleEditor.svelte';
+  import { rulesStore, rulesActions } from '../lib/stores/rules';
 
-  let rules: Rule[] = [];
-  let loading = false;
-  let error: string | null = null;
   let showEditor = false;
   let editingRule: Rule | null = null;
 
+  // Subscribe to the store
+  $: rules = $rulesStore.rules;
+  $: loading = $rulesStore.loading;
+  $: error = $rulesStore.error;
+
   onMount(async () => {
-    await loadRules();
+    // Load rules (will use cache if available)
+    await rulesActions.loadRules();
   });
 
-  async function loadRules() {
-    loading = true;
-    error = null;
-    try {
-      rules = await getRules();
-      // Sort by priority
-      rules.sort((a, b) => a.priority - b.priority);
-    } catch (err) {
-      console.error('Failed to load rules:', err);
-      error = err instanceof Error ? err.message : 'Failed to load rules';
-    } finally {
-      loading = false;
-    }
+  async function handleRefresh() {
+    // Force refresh from backend
+    await rulesActions.refresh();
   }
 
   async function handleToggle(ruleId: string, currentEnabled: boolean) {
     try {
       console.log('Toggling rule:', ruleId, 'from', currentEnabled, 'to', !currentEnabled);
-      const result = await toggleRule(ruleId, !currentEnabled);
-      console.log('Toggle result:', result);
-      await loadRules(); // Reload to reflect changes
+      const updatedRule = await apiToggleRule(ruleId, !currentEnabled);
+      console.log('Toggle result:', updatedRule);
+
+      // Update the rule in the store
+      rulesActions.updateRule(ruleId, updatedRule);
     } catch (err) {
       console.error('Failed to toggle rule:', err);
       const errorMsg = err instanceof Error ? err.message : String(err);
-      error = `Failed to toggle rule: ${errorMsg}`;
+      rulesActions.setError(`Failed to toggle rule: ${errorMsg}`);
     }
   }
 
@@ -56,13 +52,15 @@
 
     try {
       console.log('Deleting rule:', ruleId);
-      const result = await deleteRule(ruleId);
-      console.log('Delete result:', result);
-      await loadRules(); // Reload to reflect changes
+      await apiDeleteRule(ruleId);
+      console.log('Delete completed');
+
+      // Remove the rule from the store
+      rulesActions.deleteRule(ruleId);
     } catch (err) {
       console.error('Failed to delete rule:', err);
       const errorMsg = err instanceof Error ? err.message : String(err);
-      error = `Failed to delete rule: ${errorMsg}`;
+      rulesActions.setError(`Failed to delete rule: ${errorMsg}`);
     }
   }
 
@@ -79,7 +77,8 @@
   async function handleEditorSave() {
     showEditor = false;
     editingRule = null;
-    await loadRules();
+    // Refresh to get the latest data
+    await rulesActions.refresh();
   }
 
   function handleEditorCancel() {
@@ -95,23 +94,41 @@
       <h1 class="text-3xl font-bold">Rules Configuration</h1>
       <p class="text-base-content/60 mt-1">Manage file organization rules</p>
     </div>
-    <button class="btn btn-primary" on:click={handleAddNew}>
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        class="h-5 w-5 mr-2"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M12 4v16m8-8H4"
-        />
-      </svg>
-      Add New Rule
-    </button>
+    <div class="flex gap-2">
+      <button class="btn btn-ghost btn-sm" on:click={handleRefresh} title="Refresh rules from backend">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+          />
+        </svg>
+      </button>
+      <button class="btn btn-primary" on:click={handleAddNew}>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-5 w-5 mr-2"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 4v16m8-8H4"
+          />
+        </svg>
+        Add New Rule
+      </button>
+    </div>
   </div>
 
   <!-- Error Display -->

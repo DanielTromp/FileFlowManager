@@ -1,5 +1,5 @@
 use std::process::Command;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 /// Determines if we're running in production (from Applications) or development
 fn is_production() -> bool {
@@ -9,32 +9,37 @@ fn is_production() -> bool {
     false
 }
 
-/// Get the path to the Python backend based on environment
-pub fn get_backend_dir() -> Result<PathBuf, String> {
+/// Get the path to the backend executable based on environment
+pub fn get_backend_executable() -> Result<PathBuf, String> {
     if is_production() {
-        // In production, the backend should be bundled with the app
-        // For now, we'll use the installed backend in the user's home
-        let home = std::env::var("HOME").map_err(|_| "Failed to get HOME directory")?;
-        let backend_path = PathBuf::from(&home).join("code/Filefly-specify/backend");
+        // In production, try multiple locations for the executable
 
-        if backend_path.exists() {
-            Ok(backend_path)
-        } else {
-            // Fallback to a system-installed location
-            Ok(PathBuf::from("/usr/local/lib/fileflow/backend"))
-        }
-    } else {
-        // Development mode - try multiple strategies to find the backend
-
-        // Strategy 1: Use FILEFLOW_BACKEND_PATH environment variable if set
-        if let Ok(env_path) = std::env::var("FILEFLOW_BACKEND_PATH") {
-            let backend_path = PathBuf::from(env_path);
-            if backend_path.exists() {
-                return Ok(backend_path);
+        // Strategy 1: Check bundled executable in app bundle Resources
+        // Executable is at: /Applications/FileFlow Manager.app/Contents/MacOS/FileFlow Manager
+        // Backend binary at: /Applications/FileFlow Manager.app/Contents/Resources/_up_/_up_/backend/dist/fileflow-backend
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(macos_dir) = exe.parent() {
+                if let Some(contents_dir) = macos_dir.parent() {
+                    let backend_exe = contents_dir.join("Resources").join("_up_").join("_up_").join("backend").join("dist").join("fileflow-backend");
+                    if backend_exe.exists() {
+                        return Ok(backend_exe);
+                    }
+                }
             }
         }
 
-        // Strategy 2: Try relative path from current executable
+        // Strategy 2: Development backend executable (for testing production builds)
+        let home = std::env::var("HOME").map_err(|_| "Failed to get HOME directory")?;
+        let dev_backend_exe = PathBuf::from(&home).join("code/Filefly-specify/backend/dist/fileflow-backend");
+        if dev_backend_exe.exists() {
+            return Ok(dev_backend_exe);
+        }
+
+        Err("Backend executable not found in app bundle or development location".to_string())
+    } else {
+        // Development mode - use the development executable
+
+        // Strategy 1: Try relative path from current executable
         if let Ok(exe) = std::env::current_exe() {
             // exe is likely in frontend/src-tauri/target/debug/fileflow-manager (or similar)
             if let Some(target_dir) = exe.parent() {
@@ -42,9 +47,9 @@ pub fn get_backend_dir() -> Result<PathBuf, String> {
                     if let Some(src_tauri) = debug_or_release.parent() {
                         if let Some(frontend) = src_tauri.parent() {
                             if let Some(project_root) = frontend.parent() {
-                                let backend_path = project_root.join("backend");
-                                if backend_path.exists() {
-                                    return Ok(backend_path);
+                                let backend_exe = project_root.join("backend/dist/fileflow-backend");
+                                if backend_exe.exists() {
+                                    return Ok(backend_exe);
                                 }
                             }
                         }
@@ -53,56 +58,37 @@ pub fn get_backend_dir() -> Result<PathBuf, String> {
             }
         }
 
-        // Strategy 3: Try known development location
+        // Strategy 2: Try known development location
         let home = std::env::var("HOME").map_err(|_| "Failed to get HOME directory")?;
-        let dev_backend_path = PathBuf::from(&home).join("code/Filefly-specify/backend");
-        if dev_backend_path.exists() {
-            return Ok(dev_backend_path);
+        let dev_backend_exe = PathBuf::from(&home).join("code/Filefly-specify/backend/dist/fileflow-backend");
+        if dev_backend_exe.exists() {
+            return Ok(dev_backend_exe);
         }
 
-        Err("Could not locate backend directory. Tried environment variable, relative path from executable, and ~/code/Filefly-specify/backend".to_string())
+        Err("Could not locate backend executable. Have you run ./build_executable.sh in the backend directory?".to_string())
     }
 }
 
 /// Execute a Python backend command
 pub fn execute_backend_command(command: &str, args: &serde_json::Value) -> Result<String, String> {
-    let backend_dir = get_backend_dir()?;
+    let backend_executable = get_backend_executable()?;
 
-    if !backend_dir.exists() {
-        return Err(format!("Backend directory not found: {:?}", backend_dir));
+    if !backend_executable.exists() {
+        return Err(format!("Backend executable not found: {:?}", backend_executable));
     }
 
-    // Always use Poetry since it has all the required dependencies installed
-    // The system Python may not have the required packages
-    let poetry_cmd = find_poetry_command();
-
-    let output = Command::new(poetry_cmd)
-        .current_dir(&backend_dir)
-        .arg("run")
-        .arg("python")
-        .arg("-m")
-        .arg("fileflow_api.tauri_commands")
+    // Execute the standalone backend binary
+    let output = Command::new(&backend_executable)
         .arg(command)
         .arg(args.to_string())
         .output()
-        .map_err(|e| format!("Failed to execute Python backend with poetry: {}", e))?;
+        .map_err(|e| format!("Failed to execute backend: {}", e))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
-        return Err(format!("Python backend error:\nStderr: {}\nStdout: {}", stderr, stdout));
+        return Err(format!("Backend error:\nStderr: {}\nStdout: {}", stderr, stdout));
     }
 
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
-}
-
-/// Find the poetry command in common locations
-fn find_poetry_command() -> &'static str {
-    if Path::new("/Users/daniel/.local/bin/poetry").exists() {
-        "/Users/daniel/.local/bin/poetry"
-    } else if Path::new("/usr/local/bin/poetry").exists() {
-        "/usr/local/bin/poetry"
-    } else {
-        "poetry" // Hope it's in PATH
-    }
 }
