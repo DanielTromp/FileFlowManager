@@ -33,22 +33,32 @@ jobs:
       # Build backend executable
       - name: Install backend dependencies
         working-directory: ./backend
-        run: poetry install --no-interaction
-
-      - name: Install PyInstaller
-        working-directory: ./backend
-        run: poetry add --group dev pyinstaller
+        run: |
+          poetry install --no-interaction
+          poetry run pip install pyinstaller
 
       - name: Build backend executable
         working-directory: ./backend
         run: |
-          chmod +x build_executable.sh
-          ./build_executable.sh
+          poetry run pyinstaller \
+            --name=fileflow-backend \
+            --onefile \
+            --clean \
+            --noconfirm \
+            --log-level=INFO \
+            --hidden-import=fileflow_core \
+            --hidden-import=fileflow_api \
+            --hidden-import=fileflow_config \
+            --hidden-import=fileflow_storage \
+            --hidden-import=fileflow_cli \
+            main.py
 
       - name: Verify backend executable
         run: |
           ls -lh backend/dist/
           file backend/dist/fileflow-backend
+          echo "Backend executable size:"
+          du -h backend/dist/fileflow-backend
 
       # Setup Node.js and pnpm for frontend
       - name: Setup pnpm
