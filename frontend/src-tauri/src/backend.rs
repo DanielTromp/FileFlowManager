@@ -12,15 +12,14 @@ fn is_production() -> bool {
 /// Get the path to the backend executable based on environment
 pub fn get_backend_executable() -> Result<PathBuf, String> {
     if is_production() {
-        // In production, try multiple locations for the executable
-
-        // Strategy 1: Check bundled executable in app bundle Resources
+        // In production, check bundled executable in app bundle Resources
         // Executable is at: /Applications/FileFlow Manager.app/Contents/MacOS/FileFlow Manager
-        // Backend binary at: /Applications/FileFlow Manager.app/Contents/Resources/_up_/_up_/backend/dist/fileflow-backend
+        // Backend binary at: /Applications/FileFlow Manager.app/Contents/Resources/fileflow-backend
         if let Ok(exe) = std::env::current_exe() {
             if let Some(macos_dir) = exe.parent() {
                 if let Some(contents_dir) = macos_dir.parent() {
-                    let backend_exe = contents_dir.join("Resources").join("_up_").join("_up_").join("backend").join("dist").join("fileflow-backend");
+                    // Tauri places resources directly in Resources directory
+                    let backend_exe = contents_dir.join("Resources").join("fileflow-backend");
                     if backend_exe.exists() {
                         return Ok(backend_exe);
                     }
@@ -28,14 +27,7 @@ pub fn get_backend_executable() -> Result<PathBuf, String> {
             }
         }
 
-        // Strategy 2: Development backend executable (for testing production builds)
-        let home = std::env::var("HOME").map_err(|_| "Failed to get HOME directory")?;
-        let dev_backend_exe = PathBuf::from(&home).join("code/Filefly-specify/backend/dist/fileflow-backend");
-        if dev_backend_exe.exists() {
-            return Ok(dev_backend_exe);
-        }
-
-        Err("Backend executable not found in app bundle or development location".to_string())
+        Err("Backend executable not found in app bundle. Please reinstall the application.".to_string())
     } else {
         // Development mode - use the development executable
 
