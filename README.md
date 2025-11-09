@@ -2,7 +2,7 @@
 
 **Intelligent automated file organization system for macOS**
 
-Version: 0.1.0
+Version: 0.1.1
 Status: Beta - Core features complete, polishing in progress
 
 ## Overview
@@ -24,14 +24,42 @@ FileFlow Manager is an intelligent, automated file organization system for macOS
 
 ## Getting Started
 
-### Prerequisites
+### Installing from DMG (End Users)
+
+1. **Download the latest DMG** from the [Releases page](https://github.com/DanielTromp/Filefly-specify/releases)
+2. **Open the DMG** and drag FileFlow Manager to your Applications folder
+3. **Bypass macOS Gatekeeper** (required for unsigned apps):
+
+   **Option 1: Right-click method (easiest)**
+   - Locate FileFlow Manager in your Applications folder
+   - Right-click (or Control-click) on the app
+   - Select "Open" from the menu
+   - Click "Open" in the security dialog
+   - The app will now run (you only need to do this once)
+
+   **Option 2: Command line method**
+   ```bash
+   xattr -d com.apple.quarantine "/Applications/FileFlow Manager.app"
+   ```
+
+   **Option 3: System Settings method**
+   - Try to open the app normally (it will be blocked)
+   - Go to System Settings > Privacy & Security
+   - Scroll down to find the blocked app message
+   - Click "Open Anyway"
+
+**Note:** This app is currently unsigned. We plan to add code signing in a future release.
+
+### Development Setup
+
+#### Prerequisites
 - macOS 10.15 (Catalina) or newer
 - Python 3.10+
 - Node.js 18.0+
 - Rust 1.70+ (for Tauri)
 - pnpm
 
-### Quick Installation
+#### Installation
 
 1. **Clone the repository**:
 ```bash
@@ -51,7 +79,7 @@ cd frontend
 pnpm install
 ```
 
-### Running the Application
+#### Running the Application
 
 **GUI Application** (Recommended):
 ```bash

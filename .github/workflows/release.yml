@@ -95,9 +95,28 @@ jobs:
 
             ## Installation
             1. Download the DMG file below
-            2. Open the DMG
-            3. Drag FileFlow Manager to your Applications folder
-            4. Launch from Applications
+            2. Open the DMG and drag FileFlow Manager to your Applications folder
+            3. **Bypass macOS Gatekeeper** (required for unsigned apps):
+
+               **Option 1: Right-click method (easiest)**
+               - Locate FileFlow Manager in your Applications folder
+               - Right-click (or Control-click) on the app
+               - Select "Open" from the menu
+               - Click "Open" in the security dialog
+               - The app will now run (you only need to do this once)
+
+               **Option 2: Command line method**
+               ```bash
+               xattr -d com.apple.quarantine "/Applications/FileFlow Manager.app"
+               ```
+
+               **Option 3: System Settings method**
+               - Try to open the app normally (it will be blocked)
+               - Go to System Settings > Privacy & Security
+               - Scroll down to find the blocked app message
+               - Click "Open Anyway"
+
+            **Note:** This app is currently unsigned. We plan to add code signing in a future release.
 
             ## Requirements
             - macOS 10.15 (Catalina) or later
