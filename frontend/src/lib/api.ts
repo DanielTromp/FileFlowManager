@@ -4,7 +4,7 @@
  * Provides typed wrappers around Tauri invoke commands.
  */
 
-import { invoke } from '@tauri-apps/api';
+import { invoke } from "@tauri-apps/api";
 import type {
   ScanResult,
   Rule,
@@ -14,77 +14,77 @@ import type {
   ExecuteOperationsRequest,
   CreateRuleRequest,
   UpdateRuleRequest,
-} from './types';
+} from "./types";
 
 /**
  * Scan files according to active rules
  */
 export async function scanFiles(request: ScanFilesRequest): Promise<ScanResult> {
-  console.log('[API] scanFiles called with:', request);
+  console.log("[API] scanFiles called with:", request);
   const params = {
     request: {
       dry_run: request.dry_run,
-      rule_ids: request.rule_ids || null
-    }
+      rule_ids: request.rule_ids || null,
+    },
   };
-  console.log('[API] Calling Tauri with params:', params);
-  return await invoke<ScanResult>('scan_files', params);
+  console.log("[API] Calling Tauri with params:", params);
+  return await invoke<ScanResult>("scan_files", params);
 }
 
 /**
  * Execute planned file operations
  */
 export async function executeOperations(request: ExecuteOperationsRequest): Promise<ScanResult> {
-  return await invoke<ScanResult>('execute_operations', { ...request });
+  return await invoke<ScanResult>("execute_operations", { ...request });
 }
 
 /**
  * Cancel an ongoing operation
  */
 export async function cancelOperation(operationId: string): Promise<void> {
-  return await invoke('cancel_operation', { operationId });
+  return await invoke("cancel_operation", { operationId });
 }
 
 /**
  * Get all configured rules
  */
 export async function getRules(): Promise<Rule[]> {
-  return await invoke<Rule[]>('get_rules');
+  return await invoke<Rule[]>("get_rules");
 }
 
 /**
  * Create a new rule
  */
 export async function createRule(request: CreateRuleRequest): Promise<Rule> {
-  return await invoke<Rule>('create_rule', { ruleData: request.rule });
+  return await invoke<Rule>("create_rule", { ruleData: request.rule });
 }
 
 /**
  * Update an existing rule
  */
 export async function updateRule(request: UpdateRuleRequest): Promise<Rule> {
-  return await invoke<Rule>('update_rule', { ruleId: request.rule_id, ruleData: request.updates });
+  return await invoke<Rule>("update_rule", { ruleId: request.rule_id, ruleData: request.updates });
 }
 
 /**
  * Delete a rule
  */
 export async function deleteRule(ruleId: string): Promise<void> {
-  return await invoke('delete_rule', { ruleId });
+  return await invoke("delete_rule", { ruleId });
 }
 
 /**
  * Toggle a rule's enabled status
  */
 export async function toggleRule(ruleId: string, enabled: boolean): Promise<Rule> {
-  return await invoke<Rule>('toggle_rule', { ruleId, enabled });
+  return await invoke<Rule>("toggle_rule", { ruleId, enabled });
 }
 
 /**
  * Get large files exceeding threshold
  */
 export async function getLargeFiles(thresholdMb?: number, limit?: number): Promise<FileMetadata[]> {
-  return await invoke<FileMetadata[]>('get_large_files', {
+  return await invoke<FileMetadata[]>("get_large_files", {
     thresholdMb,
     limit,
   });
@@ -98,7 +98,7 @@ export async function getOldFiles(
   fileTypes?: string[],
   limit?: number
 ): Promise<FileMetadata[]> {
-  return await invoke<FileMetadata[]>('get_old_files', {
+  return await invoke<FileMetadata[]>("get_old_files", {
     thresholdDays,
     fileTypes,
     limit,
@@ -108,13 +108,16 @@ export async function getOldFiles(
 /**
  * Delete specified files
  */
-export async function deleteFiles(filePaths: string[], confirmDeletions: boolean): Promise<{
+export async function deleteFiles(
+  filePaths: string[],
+  confirmDeletions: boolean
+): Promise<{
   deleted_count: number;
   failed_count: number;
   errors: string[];
   space_freed_mb: number;
 }> {
-  return await invoke('delete_files', {
+  return await invoke("delete_files", {
     filePaths,
     confirmDeletions,
   });
@@ -124,28 +127,28 @@ export async function deleteFiles(filePaths: string[], confirmDeletions: boolean
  * Get current configuration
  */
 export async function getConfiguration(): Promise<Configuration> {
-  return await invoke<Configuration>('get_configuration');
+  return await invoke<Configuration>("get_configuration");
 }
 
 /**
  * Update configuration
  */
 export async function updateConfiguration(updates: Partial<Configuration>): Promise<Configuration> {
-  return await invoke<Configuration>('update_configuration', { updates });
+  return await invoke<Configuration>("update_configuration", { updates });
 }
 
 /**
  * Export configuration to file
  */
 export async function exportConfiguration(destinationPath: string): Promise<void> {
-  return await invoke('export_configuration', { destinationPath });
+  return await invoke("export_configuration", { destinationPath });
 }
 
 /**
  * Import configuration from file
  */
 export async function importConfiguration(sourcePath: string, merge: boolean): Promise<void> {
-  return await invoke('import_configuration', {
+  return await invoke("import_configuration", {
     sourcePath,
     merge,
   });
@@ -155,7 +158,7 @@ export async function importConfiguration(sourcePath: string, merge: boolean): P
  * Auto-detect screenshot location
  */
 export async function detectScreenshotLocation(): Promise<string> {
-  return await invoke<string>('detect_screenshot_location');
+  return await invoke<string>("detect_screenshot_location");
 }
 
 /**
@@ -168,30 +171,33 @@ export async function getOperationHistory(options?: {
   rule_id?: string;
   include_dry_runs?: boolean;
 }): Promise<any[]> {
-  return await invoke('get_operation_history', options || {});
+  return await invoke("get_operation_history", options || {});
 }
 
 /**
  * Get system status
  */
 export async function getSystemStatus(): Promise<{
-  status: 'healthy' | 'degraded' | 'error';
+  status: "healthy" | "degraded" | "error";
   uptime_seconds: number;
   memory_usage_mb: number;
   database_size_mb: number;
 }> {
-  return await invoke('get_system_status');
+  return await invoke("get_system_status");
 }
 
 /**
  * Clear cache
  */
-export async function clearCache(clearChecksums: boolean, clearHistory: boolean): Promise<{
+export async function clearCache(
+  clearChecksums: boolean,
+  clearHistory: boolean
+): Promise<{
   checksums_deleted: number;
   history_deleted: number;
   space_freed_mb: number;
 }> {
-  return await invoke('clear_cache', {
+  return await invoke("clear_cache", {
     clearChecksums,
     clearHistory,
   });

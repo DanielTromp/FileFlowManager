@@ -4,28 +4,29 @@ Standalone entry point for FileFlow backend.
 This is used by PyInstaller to create a standalone executable.
 """
 
-import sys
 import json
-from fileflow_core.logging_config import setup_logging
+import sys
+
 from fileflow_api.tauri_commands import (
-    scan_files,
-    execute_operations,
+    CommandError,
     cancel_operation,
-    get_rules,
-    get_configuration,
-    detect_screenshot_location,
-    get_operation_history,
     create_rule,
-    update_rule,
+    delete_files,
     delete_rule,
-    toggle_rule,
+    detect_screenshot_location,
+    execute_operations,
+    export_configuration,
+    get_configuration,
     get_large_files,
     get_old_files,
-    delete_files,
-    export_configuration,
+    get_operation_history,
+    get_rules,
     import_configuration,
-    CommandError
+    scan_files,
+    toggle_rule,
+    update_rule,
 )
+from fileflow_core.logging_config import setup_logging
 
 if __name__ == "__main__":
     # Setup logging

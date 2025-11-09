@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { scanFiles, getOperationHistory } from '$lib/api';
-  import { scanStore, scanActions } from '$lib/stores/scan';
-  import ProgressBar from '$lib/components/ProgressBar.svelte';
-  import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-  import KeyboardShortcutsHelp from '$lib/components/KeyboardShortcutsHelp.svelte';
-  import { registerShortcuts, type ShortcutGroup } from '$lib/keyboardShortcuts';
-  import { notifyScanComplete, notifyExecutionComplete } from '$lib/notifications';
-  import { formatDateTime } from '$lib/utils/dateFormat';
+  import { onMount, onDestroy } from "svelte";
+  import { scanFiles, getOperationHistory } from "$lib/api";
+  import { scanStore, scanActions } from "$lib/stores/scan";
+  import ProgressBar from "$lib/components/ProgressBar.svelte";
+  import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
+  import KeyboardShortcutsHelp from "$lib/components/KeyboardShortcutsHelp.svelte";
+  import { registerShortcuts, type ShortcutGroup } from "$lib/keyboardShortcuts";
+  import { notifyScanComplete, notifyExecutionComplete } from "$lib/notifications";
+  import { formatDateTime } from "$lib/utils/dateFormat";
 
   let showConfirmExecute = false;
   let showShortcutsHelp = false;
@@ -20,25 +20,25 @@
   // Define keyboard shortcuts for this page (T154)
   const shortcutGroups: ShortcutGroup[] = [
     {
-      name: 'Actions',
+      name: "Actions",
       shortcuts: [
         {
-          key: 's',
+          key: "s",
           meta: true,
-          description: 'Start Dry Run Scan',
+          description: "Start Dry Run Scan",
           handler: handleDryRunScan,
         },
         {
-          key: 'r',
+          key: "r",
           meta: true,
-          description: 'Refresh History',
+          description: "Refresh History",
           handler: loadOperationHistory,
         },
         {
-          key: 'e',
+          key: "e",
           meta: true,
           shift: true,
-          description: 'Execute Operations',
+          description: "Execute Operations",
           handler: () => {
             if (lastResult && !isScanning) {
               showConfirmExecute = true;
@@ -48,12 +48,12 @@
       ],
     },
     {
-      name: 'Help',
+      name: "Help",
       shortcuts: [
         {
-          key: '?',
+          key: "?",
           shift: true,
-          description: 'Show Keyboard Shortcuts',
+          description: "Show Keyboard Shortcuts",
           handler: () => (showShortcutsHelp = true),
         },
       ],
@@ -82,7 +82,7 @@
     try {
       operationHistory = await getOperationHistory({ limit: 20, include_dry_runs: false });
     } catch (error) {
-      console.error('Failed to load operation history:', error);
+      console.error("Failed to load operation history:", error);
     } finally {
       loadingHistory = false;
     }
@@ -91,16 +91,16 @@
   async function handleDryRunScan() {
     scanActions.startScan();
     try {
-      console.log('Starting scan with dry_run=true');
+      console.log("Starting scan with dry_run=true");
       const result = await scanFiles({ dry_run: true });
-      console.log('Scan result:', result);
+      console.log("Scan result:", result);
       scanActions.completeScan(result);
       lastScanTime = formatDateTime(new Date());
 
       // Send notification (T158)
       await notifyScanComplete(result.files_matched, result.planned_operations.length);
     } catch (error) {
-      console.error('Scan error:', error);
+      console.error("Scan error:", error);
       const errorMsg = error instanceof Error ? error.message : String(error);
       scanActions.failScan(`Scan failed: ${errorMsg}`);
     }
@@ -116,15 +116,19 @@
       showConfirmExecute = false;
 
       // Send notification (T158)
-      const successCount = result.planned_operations.filter(op => op.success && !op.error_message).length;
-      const failedCount = result.planned_operations.filter(op => !op.success || op.error_message).length;
+      const successCount = result.planned_operations.filter(
+        (op) => op.success && !op.error_message
+      ).length;
+      const failedCount = result.planned_operations.filter(
+        (op) => !op.success || op.error_message
+      ).length;
       const spaceFree = result.estimated_space_freed_mb || 0;
       await notifyExecutionComplete(successCount, failedCount, spaceFree);
 
       // Refresh operation history after execution
       await loadOperationHistory();
     } catch (error) {
-      scanActions.failScan(error instanceof Error ? error.message : 'Execution failed');
+      scanActions.failScan(error instanceof Error ? error.message : "Execution failed");
     }
   }
 
@@ -146,8 +150,19 @@
       on:click={() => (showShortcutsHelp = true)}
       title="Keyboard Shortcuts (Shift+?)"
     >
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
       </svg>
       <span class="ml-1">Help</span>
     </button>
@@ -158,7 +173,7 @@
     <div class="stats shadow md:w-[40%]">
       <div class="stat">
         <div class="stat-title">Last Scan</div>
-        <div class="stat-value text-xl">{lastScanTime || 'Never'}</div>
+        <div class="stat-value text-xl">{lastScanTime || "Never"}</div>
         <div class="stat-desc">Most recent scan time</div>
       </div>
     </div>
@@ -188,11 +203,7 @@
       <h2 class="card-title">Quick Actions</h2>
 
       <div class="flex gap-4">
-        <button
-          class="btn btn-primary"
-          on:click={handleDryRunScan}
-          disabled={isScanning}
-        >
+        <button class="btn btn-primary" on:click={handleDryRunScan} disabled={isScanning}>
           {#if isScanning}
             <span class="loading loading-spinner loading-sm"></span>
             Scanning...
@@ -278,9 +289,9 @@
                           {operation.operation_type.toUpperCase()}
                         </span>
                       </td>
-                      <td class="text-sm">{operation.source_path.split('/').pop()}</td>
+                      <td class="text-sm">{operation.source_path.split("/").pop()}</td>
                       <td class="text-sm text-base-content/60">
-                        {operation.destination_path || 'N/A'}
+                        {operation.destination_path || "N/A"}
                       </td>
                     </tr>
                   {/each}
@@ -298,7 +309,11 @@
     <div class="card-body">
       <div class="flex justify-between items-center mb-2">
         <h2 class="card-title">Recent Operations</h2>
-        <button class="btn btn-sm btn-ghost" on:click={loadOperationHistory} disabled={loadingHistory}>
+        <button
+          class="btn btn-sm btn-ghost"
+          on:click={loadOperationHistory}
+          disabled={loadingHistory}
+        >
           {#if loadingHistory}
             <span class="loading loading-spinner loading-xs"></span>
           {:else}
@@ -360,10 +375,13 @@
                     </span>
                   </td>
                   <td class="text-sm max-w-xs truncate" title={operation.source_path}>
-                    {operation.source_path.split('/').pop()}
+                    {operation.source_path.split("/").pop()}
                   </td>
-                  <td class="text-sm text-base-content/60 max-w-xs truncate" title={operation.destination_path}>
-                    {operation.destination_path || 'N/A'}
+                  <td
+                    class="text-sm text-base-content/60 max-w-xs truncate"
+                    title={operation.destination_path}
+                  >
+                    {operation.destination_path || "N/A"}
                   </td>
                   <td>
                     {#if operation.success}
@@ -386,7 +404,8 @@
 <ConfirmDialog
   bind:isOpen={showConfirmExecute}
   title="Execute File Operations"
-  message="This will move/delete {lastResult?.planned_operations.length || 0} files. This action cannot be undone. Continue?"
+  message="This will move/delete {lastResult?.planned_operations.length ||
+    0} files. This action cannot be undone. Continue?"
   confirmText="Execute"
   dangerous={true}
   onConfirm={handleExecute}

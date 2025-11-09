@@ -2,47 +2,74 @@
 Atomic file operations for FileFlow Manager.
 
 Handles safe file moves and deletions with metadata preservation.
+Enhanced with retry logic and comprehensive error handling.
 """
 
 import os
 import shutil
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any
+
+from fileflow_core.errors import FileOperationError, TransientFileError
+from fileflow_core.retry import retry_file_operation
 
 
 class FileOperations:
     """Safe file operations with atomicity guarantees."""
 
     @staticmethod
-    def move_file(
+    @retry_file_operation
+    def _move_file_with_retry(
         source: Path,
         destination: Path,
         preserve_metadata: bool = True,
-    ) -> Tuple[bool, Optional[str]]:
+    ) -> None:
         """
-        Move file atomically from source to destination.
+        Internal move operation with retry logic.
 
-        Returns (success, error_message).
+        Raises FileOperationError or TransientFileError on failure.
         """
+        # Ensure destination directory exists
+        destination.parent.mkdir(parents=True, exist_ok=True)
+
+        # Check if destination already exists
+        if destination.exists():
+            raise FileOperationError(
+                f"Destination already exists: {destination}",
+                operation="move",
+                source=str(source),
+                destination=str(destination),
+                recoverable=False,
+            )
+
+        # Check source exists
+        if not source.exists():
+            raise FileOperationError(
+                f"Source file not found: {source}",
+                operation="move",
+                source=str(source),
+                recoverable=False,
+            )
+
+        # Check if we have permissions
+        if not os.access(source, os.R_OK):
+            raise FileOperationError(
+                "Cannot read source file: permission denied",
+                operation="move",
+                source=str(source),
+                recoverable=False,
+            )
+
+        if not os.access(destination.parent, os.W_OK):
+            raise FileOperationError(
+                "Cannot write to destination directory: permission denied",
+                operation="move",
+                source=str(source),
+                destination=str(destination),
+                recoverable=False,
+            )
+
         try:
-            # Ensure destination directory exists
-            destination.parent.mkdir(parents=True, exist_ok=True)
-
-            # Check if destination already exists
-            if destination.exists():
-                return False, f"Destination already exists: {destination}"
-
-            # Check source exists
-            if not source.exists():
-                return False, f"Source file not found: {source}"
-
-            # Check if we have permissions
-            if not os.access(source, os.R_OK):
-                return False, f"Cannot read source file: {source}"
-
-            if not os.access(destination.parent, os.W_OK):
-                return False, f"Cannot write to destination directory: {destination.parent}"
-
             # Atomic move (rename on same filesystem)
             # If cross-filesystem, this will fall back to copy+delete
             os.replace(str(source), str(destination))
@@ -57,40 +84,102 @@ class FileOperations:
                     # Not critical if metadata preservation fails
                     pass
 
-            return True, None
-
         except PermissionError as e:
-            return False, f"Permission denied: {e}"
+            raise FileOperationError(
+                str(e),
+                operation="move",
+                source=str(source),
+                destination=str(destination),
+                recoverable=False,
+            )
         except OSError as e:
-            return False, f"OS error during move: {e}"
+            # OSError might be transient (file lock, network hiccup)
+            # Raise as TransientFileError to trigger retry
+            raise TransientFileError(
+                str(e),
+                file_path=str(source),
+                retry_after=1.0,
+            )
+
+    @staticmethod
+    def move_file(
+        source: Path,
+        destination: Path,
+        preserve_metadata: bool = True,
+    ) -> tuple[bool, str | None]:
+        """
+        Move file atomically from source to destination.
+
+        Returns (success, error_message).
+
+        Enhanced with automatic retry logic for transient failures.
+        """
+        try:
+            FileOperations._move_file_with_retry(source, destination, preserve_metadata)
+            return True, None
+        except FileOperationError as e:
+            return False, e.user_message
         except Exception as e:
             return False, f"Unexpected error during move: {e}"
 
     @staticmethod
-    def delete_file(file_path: Path) -> Tuple[bool, Optional[str]]:
+    @retry_file_operation
+    def _delete_file_with_retry(file_path: Path) -> None:
+        """
+        Internal delete operation with retry logic.
+
+        Raises FileOperationError or TransientFileError on failure.
+        """
+        # Check file exists
+        if not file_path.exists():
+            raise FileOperationError(
+                f"File not found: {file_path}",
+                operation="delete",
+                source=str(file_path),
+                recoverable=False,
+            )
+
+        # Check if we have permissions
+        if not os.access(file_path, os.W_OK):
+            raise FileOperationError(
+                "Cannot delete file: permission denied",
+                operation="delete",
+                source=str(file_path),
+                recoverable=False,
+            )
+
+        try:
+            # Delete the file
+            file_path.unlink()
+        except PermissionError as e:
+            raise FileOperationError(
+                str(e),
+                operation="delete",
+                source=str(file_path),
+                recoverable=False,
+            )
+        except OSError as e:
+            # OSError might be transient
+            raise TransientFileError(
+                str(e),
+                file_path=str(file_path),
+                retry_after=1.0,
+            )
+
+    @staticmethod
+    def delete_file(file_path: Path) -> tuple[bool, str | None]:
         """
         Delete a file safely.
 
         Returns (success, error_message).
+
+        Enhanced with automatic retry logic for transient failures.
         """
         try:
-            # Check file exists
-            if not file_path.exists():
-                return False, f"File not found: {file_path}"
-
-            # Check if we have permissions
-            if not os.access(file_path, os.W_OK):
-                return False, f"Cannot delete file (permission denied): {file_path}"
-
-            # Delete the file
-            file_path.unlink()
-
+            FileOperations._delete_file_with_retry(file_path)
             return True, None
-
-        except PermissionError as e:
-            return False, f"Permission denied: {e}"
-        except OSError as e:
-            return False, f"OS error during deletion: {e}"
+        except FileOperationError as e:
+            return False, e.user_message
         except Exception as e:
             return False, f"Unexpected error during deletion: {e}"
 
@@ -98,7 +187,7 @@ class FileOperations:
     def check_disk_space(
         destination: Path,
         required_bytes: int,
-    ) -> Tuple[bool, Optional[str]]:
+    ) -> tuple[bool, str | None]:
         """
         Check if there's enough disk space at destination.
 
@@ -125,40 +214,77 @@ class FileOperations:
             return False, f"Error checking disk space: {e}"
 
     @staticmethod
-    def safe_copy(
+    @retry_file_operation
+    def _safe_copy_with_retry(
         source: Path,
         destination: Path,
         preserve_metadata: bool = True,
-    ) -> Tuple[bool, Optional[str]]:
+    ) -> None:
         """
-        Copy file safely (for backup purposes).
+        Internal copy operation with retry logic.
 
-        Returns (success, error_message).
+        Raises FileOperationError or TransientFileError on failure.
         """
+        # Ensure destination directory exists
+        destination.parent.mkdir(parents=True, exist_ok=True)
+
+        # Check source exists
+        if not source.exists():
+            raise FileOperationError(
+                f"Source file not found: {source}",
+                operation="copy",
+                source=str(source),
+                recoverable=False,
+            )
+
         try:
-            # Ensure destination directory exists
-            destination.parent.mkdir(parents=True, exist_ok=True)
-
-            # Check source exists
-            if not source.exists():
-                return False, f"Source file not found: {source}"
-
             # Copy with metadata preservation
             if preserve_metadata:
                 shutil.copy2(str(source), str(destination))
             else:
                 shutil.copy(str(source), str(destination))
+        except PermissionError as e:
+            raise FileOperationError(
+                str(e),
+                operation="copy",
+                source=str(source),
+                destination=str(destination),
+                recoverable=False,
+            )
+        except OSError as e:
+            # OSError might be transient
+            raise TransientFileError(
+                str(e),
+                file_path=str(source),
+                retry_after=1.0,
+            )
 
+    @staticmethod
+    def safe_copy(
+        source: Path,
+        destination: Path,
+        preserve_metadata: bool = True,
+    ) -> tuple[bool, str | None]:
+        """
+        Copy file safely (for backup purposes).
+
+        Returns (success, error_message).
+
+        Enhanced with automatic retry logic for transient failures.
+        """
+        try:
+            FileOperations._safe_copy_with_retry(source, destination, preserve_metadata)
             return True, None
-
+        except FileOperationError as e:
+            return False, e.user_message
         except Exception as e:
             return False, f"Error copying file: {e}"
 
     @staticmethod
     def delete_files_batch(
-        file_paths: List[Path],
+        file_paths: list[Path],
         confirm: bool = True,
-    ) -> Dict[str, any]:
+    ) -> dict[str, Any]:
         """
         Delete multiple files safely with confirmation requirement.
 

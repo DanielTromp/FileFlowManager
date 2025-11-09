@@ -10,12 +10,11 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fileflow_config.config_manager import ConfigManager
 from fileflow_config.defaults import create_default_config_file
 from fileflow_core.logging_config import get_logger, setup_logging
-from fileflow_core.models import FileOperation, ScanResult
 from fileflow_core.rule_engine import RuleEngine
 from fileflow_storage.cache import ChecksumCache
 from fileflow_storage.database import Database
@@ -41,7 +40,7 @@ class CommandError(Exception):
         self.details = details
         super().__init__(message)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {
             "code": self.code,
@@ -70,7 +69,7 @@ def get_database() -> Database:
     return Database(DEFAULT_DB_PATH)
 
 
-def scan_files(dry_run: bool = True, rule_ids: Optional[List[str]] = None) -> Dict[str, Any]:
+def scan_files(dry_run: bool = True, rule_ids: list[str] | None = None) -> dict[str, Any]:
     """
     Scan files according to active rules.
 
@@ -180,8 +179,8 @@ def scan_files(dry_run: bool = True, rule_ids: Optional[List[str]] = None) -> Di
 
 
 def execute_operations(
-    operation_ids: List[str], confirm_deletions: bool = False
-) -> Dict[str, Any]:
+    operation_ids: list[str], confirm_deletions: bool = False
+) -> dict[str, Any]:
     """
     Execute specific file operations from a previous scan.
 
@@ -259,8 +258,8 @@ def execute_operations(
                         )
 
         # Generate operation ID for cancellation tracking
-        import uuid
         import time
+        import uuid
         operation_id = str(uuid.uuid4())
 
         # Track progress for long operations
@@ -336,7 +335,7 @@ def execute_operations(
         )
 
 
-def cancel_operation(operation_id: str) -> Dict[str, Any]:
+def cancel_operation(operation_id: str) -> dict[str, Any]:
     """
     Cancel an ongoing operation.
 
@@ -372,7 +371,7 @@ def cancel_operation(operation_id: str) -> Dict[str, Any]:
         )
 
 
-def get_rules() -> List[Dict[str, Any]]:
+def get_rules() -> list[dict[str, Any]]:
     """
     Get all configured rules.
 
@@ -394,7 +393,7 @@ def get_rules() -> List[Dict[str, Any]]:
         )
 
 
-def get_configuration() -> Dict[str, Any]:
+def get_configuration() -> dict[str, Any]:
     """
     Get current configuration.
 
@@ -416,7 +415,7 @@ def get_configuration() -> Dict[str, Any]:
         )
 
 
-def export_configuration(destination_path: str) -> Dict[str, Any]:
+def export_configuration(destination_path: str) -> dict[str, Any]:
     """
     Export configuration to file (T127).
 
@@ -460,7 +459,7 @@ def export_configuration(destination_path: str) -> Dict[str, Any]:
 def import_configuration(
     source_path: str,
     merge: bool = False
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Import configuration from file (T128).
 
@@ -537,10 +536,10 @@ def detect_screenshot_location() -> str:
 def get_operation_history(
     limit: int = 100,
     offset: int = 0,
-    operation_type: Optional[str] = None,
-    rule_id: Optional[str] = None,
+    operation_type: str | None = None,
+    rule_id: str | None = None,
     include_dry_runs: bool = False,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Retrieve operation history from database.
 
@@ -586,7 +585,7 @@ def get_operation_history(
         )
 
 
-def create_rule(rule_data: Dict[str, Any]) -> Dict[str, Any]:
+def create_rule(rule_data: dict[str, Any]) -> dict[str, Any]:
     """
     Create a new rule.
 
@@ -662,7 +661,7 @@ def create_rule(rule_data: Dict[str, Any]) -> Dict[str, Any]:
         )
 
 
-def update_rule(rule_id: str, rule_data: Dict[str, Any]) -> Dict[str, Any]:
+def update_rule(rule_id: str, rule_data: dict[str, Any]) -> dict[str, Any]:
     """
     Update an existing rule.
 
@@ -729,7 +728,7 @@ def update_rule(rule_id: str, rule_data: Dict[str, Any]) -> Dict[str, Any]:
         )
 
 
-def delete_rule(rule_id: str) -> Dict[str, Any]:
+def delete_rule(rule_id: str) -> dict[str, Any]:
     """
     Delete a rule.
 
@@ -782,7 +781,7 @@ def delete_rule(rule_id: str) -> Dict[str, Any]:
         )
 
 
-def toggle_rule(rule_id: str, enabled: bool) -> Dict[str, Any]:
+def toggle_rule(rule_id: str, enabled: bool) -> dict[str, Any]:
     """
     Enable or disable a rule.
 
@@ -837,8 +836,8 @@ def toggle_rule(rule_id: str, enabled: bool) -> Dict[str, Any]:
 
 def get_large_files(
     threshold_mb: int = 100,
-    limit: Optional[int] = None,
-) -> List[Dict[str, Any]]:
+    limit: int | None = None,
+) -> list[dict[str, Any]]:
     """
     Find files larger than threshold.
 
@@ -899,9 +898,9 @@ def get_large_files(
 
 def get_old_files(
     threshold_days: int = 90,
-    file_types: Optional[List[str]] = None,
-    limit: Optional[int] = None,
-) -> List[Dict[str, Any]]:
+    file_types: list[str] | None = None,
+    limit: int | None = None,
+) -> list[dict[str, Any]]:
     """
     Find files older than threshold.
 
@@ -963,9 +962,9 @@ def get_old_files(
 
 
 def delete_files(
-    file_paths: List[str],
+    file_paths: list[str],
     confirm_deletions: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Delete multiple files with confirmation.
 
@@ -1033,6 +1032,7 @@ if __name__ == "__main__":
         args = json.loads(sys.argv[2]) if len(sys.argv) > 2 else {}
 
         try:
+            result: Any
             if command == "scan_files":
                 result = scan_files(**args)
             elif command == "execute_operations":

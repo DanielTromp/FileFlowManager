@@ -7,7 +7,6 @@ Extracts dates from filenames and generates date-based paths.
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 
 class DateOrganizer:
@@ -22,7 +21,7 @@ class DateOrganizer:
     ]
 
     @classmethod
-    def extract_date_from_filename(cls, filename: str) -> Optional[datetime]:
+    def extract_date_from_filename(cls, filename: str) -> datetime | None:
         """
         Extract date from screenshot filename.
 

@@ -4,9 +4,13 @@
  * These types match the Pydantic models from backend/fileflow_core/models.py
  */
 
-export type OperationType = 'move' | 'delete' | 'skip';
+export type OperationType = "move" | "delete" | "skip";
 
-export type SkipReason = 'name_conflict' | 'permission_denied' | 'already_processed' | 'file_not_found';
+export type SkipReason =
+  | "name_conflict"
+  | "permission_denied"
+  | "already_processed"
+  | "file_not_found";
 
 export interface Rule {
   id: string;
@@ -80,7 +84,7 @@ export interface ScanResult {
 }
 
 export interface GeneralSettings {
-  log_level: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR';
+  log_level: "DEBUG" | "INFO" | "WARNING" | "ERROR";
   auto_run_on_startup: boolean;
   auto_run_interval_minutes: number;
   enable_notifications: boolean;
@@ -130,17 +134,17 @@ export interface ExecuteOperationsRequest {
 }
 
 export interface CreateRuleRequest {
-  rule: Omit<Rule, 'id' | 'created_at' | 'last_modified'>;
+  rule: Omit<Rule, "id" | "created_at" | "last_modified">;
 }
 
 export interface UpdateRuleRequest {
   rule_id: string;
-  updates: Partial<Omit<Rule, 'id' | 'created_at' | 'last_modified'>>;
+  updates: Partial<Omit<Rule, "id" | "created_at" | "last_modified">>;
 }
 
 export interface ProgressEvent {
   operation_id: string;
-  operation_type: 'scan' | 'execute';
+  operation_type: "scan" | "execute";
   progress_percent: number;
   current_file: string;
   files_processed: number;

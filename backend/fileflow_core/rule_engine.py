@@ -5,16 +5,15 @@ Orchestrates file organization based on rules with priority ordering.
 """
 
 import threading
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, List, Optional, Set
 
 from fileflow_core.date_organizer import DateOrganizer
 from fileflow_core.duplicate_detector import DuplicateDetector
 from fileflow_core.file_operations import FileOperations
 from fileflow_core.file_scanner import FileScanner
 from fileflow_core.models import (
-    DuplicatePair,
     FileMetadata,
     FileOperation,
     OperationType,
@@ -30,7 +29,7 @@ class RuleEngine:
     """Execute file organization rules."""
 
     # Class-level cancellation tracking
-    _cancelled_operations: Set[str] = set()
+    _cancelled_operations: set[str] = set()
     _lock = threading.Lock()
 
     def __init__(
@@ -50,9 +49,9 @@ class RuleEngine:
 
     def scan(
         self,
-        rules: List[Rule],
+        rules: list[Rule],
         dry_run: bool = True,
-        progress_callback: Optional[Callable[[str], None]] = None,
+        progress_callback: Callable[[str], None] | None = None,
     ) -> ScanResult:
         """
         Scan files and plan operations based on rules.
@@ -72,7 +71,7 @@ class RuleEngine:
         active_rules.sort(key=lambda r: r.priority)
 
         # Scan files for each rule
-        all_files: List[FileMetadata] = []
+        all_files: list[FileMetadata] = []
         processed_files: set[str] = set()
 
         for rule in active_rules:
@@ -91,7 +90,7 @@ class RuleEngine:
                     processed_files.add(file.path)
 
         # Plan operations
-        planned_operations: List[FileOperation] = []
+        planned_operations: list[FileOperation] = []
 
         for file in all_files:
             for rule in active_rules:
@@ -199,10 +198,10 @@ class RuleEngine:
 
     def execute(
         self,
-        operations: List[FileOperation],
-        progress_callback: Optional[Callable[[str], None]] = None,
-        operation_id: Optional[str] = None,
-    ) -> List[FileOperation]:
+        operations: list[FileOperation],
+        progress_callback: Callable[[str], None] | None = None,
+        operation_id: str | None = None,
+    ) -> list[FileOperation]:
         """
         Execute file operations with cancellation support.
 
@@ -215,13 +214,11 @@ class RuleEngine:
             List of executed operations with results
         """
         executed_operations = []
-        cancelled = False
 
         try:
             for i, operation in enumerate(operations):
                 # Check for cancellation
                 if operation_id and self.is_cancelled(operation_id):
-                    cancelled = True
                     # Mark remaining operations as cancelled
                     for remaining_op in operations[i:]:
                         remaining_op.success = False

@@ -1,19 +1,19 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import type { Writable } from 'svelte/store';
-  import { initializeTheme } from '$lib/stores/theme';
-  import ThemeToggle from '$lib/components/ThemeToggle.svelte';
-  import { initializeNotifications } from '$lib/notifications';
-  import { open } from '@tauri-apps/api/shell';
+  import { onMount } from "svelte";
+  import type { Writable } from "svelte/store";
+  import { initializeTheme } from "$lib/stores/theme";
+  import ThemeToggle from "$lib/components/ThemeToggle.svelte";
+  import { initializeNotifications } from "$lib/notifications";
+  import { open } from "@tauri-apps/api/shell";
 
   export let currentRoute: Writable<string>;
 
   const routes = [
-    { id: 'dashboard', name: 'Dashboard', icon: '📊' },
-    { id: 'rules', name: 'Rules', icon: '⚙️' },
-    { id: 'large-files', name: 'Large Files', icon: '📦' },
-    { id: 'old-files', name: 'Old Files', icon: '🕒' },
-    { id: 'settings', name: 'Settings', icon: '⚙️' },
+    { id: "dashboard", name: "Dashboard", icon: "📊" },
+    { id: "rules", name: "Rules", icon: "⚙️" },
+    { id: "large-files", name: "Large Files", icon: "📦" },
+    { id: "old-files", name: "Old Files", icon: "🕒" },
+    { id: "settings", name: "Settings", icon: "⚙️" },
   ];
 
   function navigateTo(routeId: string) {
@@ -22,7 +22,7 @@
 
   async function openHelp() {
     // Open GitHub repository documentation
-    await open('https://github.com/DanielTromp/Filefly-specify#readme');
+    await open("https://github.com/DanielTromp/Filefly-specify#readme");
   }
 
   // Initialize theme on mount (T155)
@@ -63,7 +63,10 @@
 
     <div class="absolute bottom-0 w-64 p-4 border-t border-base-300">
       <div class="text-xs text-base-content/60">
-        <button class="link link-primary text-xs" on:click={() => navigateTo('settings')}>Settings</button> •
+        <button class="link link-primary text-xs" on:click={() => navigateTo("settings")}
+          >Settings</button
+        >
+        •
         <button class="link link-primary text-xs" on:click={openHelp}>Help</button>
       </div>
     </div>

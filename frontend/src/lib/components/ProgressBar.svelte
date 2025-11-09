@@ -1,6 +1,6 @@
 <script lang="ts">
   export let progress: number = 0; // 0-100
-  export let label: string = '';
+  export let label: string = "";
   export let showPercentage: boolean = true;
 
   $: clampedProgress = Math.min(100, Math.max(0, progress));
@@ -15,9 +15,5 @@
       {/if}
     </div>
   {/if}
-  <progress
-    class="progress progress-primary w-full"
-    value={clampedProgress}
-    max="100"
-  />
+  <progress class="progress progress-primary w-full" value={clampedProgress} max="100" />
 </div>

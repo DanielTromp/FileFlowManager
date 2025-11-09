@@ -380,7 +380,7 @@ This is a **web application architecture** project:
 - [X] T167 [P] Configure Tauri build in frontend/src-tauri/tauri.conf.json (bundle DMG for macOS)
 - [X] T168 [P] Add application icons in frontend/src-tauri/icons/
 - [X] T169 [P] Create production build scripts (build-backend.sh, build-frontend.sh)
-- [ ] T170 Test production build on clean macOS system (install → run → verify all features)
+- [X] T170 Test production build on clean macOS system (install → run → verify all features)
 
 **Checkpoint**: All user stories polished, documentation complete, production-ready builds tested
 

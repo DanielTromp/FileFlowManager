@@ -4,8 +4,8 @@
    * Displays all available keyboard shortcuts to the user
    */
 
-  import { onMount, onDestroy } from 'svelte';
-  import { formatShortcut, type ShortcutGroup } from '$lib/keyboardShortcuts';
+  import { onMount, onDestroy } from "svelte";
+  import { formatShortcut, type ShortcutGroup } from "$lib/keyboardShortcuts";
 
   export let isOpen = false;
   export let onClose: () => void;
@@ -13,17 +13,17 @@
 
   // Close on Escape key
   function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape' && isOpen) {
+    if (event.key === "Escape" && isOpen) {
       onClose();
     }
   }
 
   onMount(() => {
-    window.addEventListener('keydown', handleKeydown);
+    window.addEventListener("keydown", handleKeydown);
   });
 
   onDestroy(() => {
-    window.removeEventListener('keydown', handleKeydown);
+    window.removeEventListener("keydown", handleKeydown);
   });
 </script>
 
@@ -32,7 +32,7 @@
   <div
     class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
     on:click={onClose}
-    on:keydown={(e) => e.key === 'Escape' && onClose()}
+    on:keydown={(e) => e.key === "Escape" && onClose()}
     role="button"
     tabindex="0"
   >
@@ -46,10 +46,10 @@
       aria-labelledby="shortcuts-title"
     >
       <!-- Header -->
-      <div class="sticky top-0 bg-base-100 border-b border-base-300 px-6 py-4 flex justify-between items-center">
-        <h2 id="shortcuts-title" class="text-2xl font-bold">
-          ⌨️ Keyboard Shortcuts
-        </h2>
+      <div
+        class="sticky top-0 bg-base-100 border-b border-base-300 px-6 py-4 flex justify-between items-center"
+      >
+        <h2 id="shortcuts-title" class="text-2xl font-bold">⌨️ Keyboard Shortcuts</h2>
         <button class="btn btn-ghost btn-sm btn-circle" on:click={onClose} aria-label="Close">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -75,7 +75,9 @@
             <h3 class="text-lg font-semibold mb-3 text-primary">{group.name}</h3>
             <div class="space-y-2">
               {#each group.shortcuts as shortcut}
-                <div class="flex justify-between items-center py-2 border-b border-base-200 last:border-0">
+                <div
+                  class="flex justify-between items-center py-2 border-b border-base-200 last:border-0"
+                >
                   <span class="text-base-content">{shortcut.description}</span>
                   <kbd class="kbd kbd-sm">{formatShortcut(shortcut)}</kbd>
                 </div>
@@ -102,8 +104,8 @@
           <div>
             <h4 class="font-bold">Pro Tip</h4>
             <div class="text-xs">
-              Press <kbd class="kbd kbd-xs">?</kbd> at any time to view this help dialog.
-              Shortcuts are disabled when typing in input fields.
+              Press <kbd class="kbd kbd-xs">?</kbd> at any time to view this help dialog. Shortcuts are
+              disabled when typing in input fields.
             </div>
           </div>
         </div>

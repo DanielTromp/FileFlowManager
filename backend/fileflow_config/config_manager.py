@@ -6,7 +6,6 @@ Handles reading, writing, and validating configuration files.
 
 import os
 from pathlib import Path
-from typing import Dict, Optional
 
 try:
     import tomllib  # Python 3.11+
@@ -96,7 +95,7 @@ class ConfigManager:
             # Escape quotes and backslashes
             escaped = value.replace("\\", "\\\\").replace('"', '\\"')
             return f'"{escaped}"'
-        elif isinstance(value, (int, float)):
+        elif isinstance(value, int | float):
             return str(value)
         elif isinstance(value, list):
             formatted_items = [self._format_value(item) for item in value]
@@ -125,7 +124,7 @@ class ConfigManager:
 
         return expanded
 
-    def validate(self) -> tuple[bool, Optional[str]]:
+    def validate(self) -> tuple[bool, str | None]:
         """Validate configuration file."""
         try:
             config = self.load()
@@ -184,7 +183,7 @@ class ConfigManager:
             # Replace entire configuration
             self.save(new_config)
 
-    def get_rule(self, rule_id: str) -> Optional[Rule]:
+    def get_rule(self, rule_id: str) -> Rule | None:
         """Get a specific rule by ID."""
         config = self.load()
         for rule in config.rules:
@@ -207,7 +206,7 @@ class ConfigManager:
         config.rules.append(rule)
         self.save(config)
 
-    def update_rule(self, rule_id: str, updates: Dict) -> Rule:
+    def update_rule(self, rule_id: str, updates: dict) -> Rule:
         """Update an existing rule."""
         config = self.load()
 

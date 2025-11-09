@@ -2,8 +2,8 @@
  * Scan state management store
  */
 
-import { writable, derived } from 'svelte/store';
-import type { ScanResult } from '$lib/types';
+import { writable, derived } from "svelte/store";
+import type { ScanResult } from "$lib/types";
 
 export interface ScanState {
   isScanning: boolean;

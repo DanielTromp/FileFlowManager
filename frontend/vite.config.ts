@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite';
-import { svelte } from '@sveltejs/vite-plugin-svelte';
-import { fileURLToPath, URL } from 'node:url';
+import { defineConfig } from "vite";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { fileURLToPath, URL } from "node:url";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -10,16 +10,16 @@ export default defineConfig({
     port: 1420,
     strictPort: true,
   },
-  envPrefix: ['VITE_', 'TAURI_'],
+  envPrefix: ["VITE_", "TAURI_"],
   resolve: {
     alias: {
-      '$lib': fileURLToPath(new URL('./src/lib', import.meta.url)),
+      $lib: fileURLToPath(new URL("./src/lib", import.meta.url)),
     },
-    extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json', '.svelte'],
+    extensions: [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json", ".svelte"],
   },
   build: {
-    target: process.env.TAURI_PLATFORM === 'windows' ? 'chrome105' : 'safari13',
-    minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
+    target: process.env.TAURI_PLATFORM === "windows" ? "chrome105" : "safari13",
+    minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
     sourcemap: !!process.env.TAURI_DEBUG,
   },
 });

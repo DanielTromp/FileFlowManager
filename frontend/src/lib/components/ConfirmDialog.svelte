@@ -1,9 +1,9 @@
 <script lang="ts">
   export let isOpen: boolean = false;
-  export let title: string = 'Confirm Action';
-  export let message: string = 'Are you sure?';
-  export let confirmText: string = 'Confirm';
-  export let cancelText: string = 'Cancel';
+  export let title: string = "Confirm Action";
+  export let message: string = "Are you sure?";
+  export let confirmText: string = "Confirm";
+  export let cancelText: string = "Cancel";
   export let onConfirm: () => void = () => {};
   export let onCancel: () => void = () => {};
   export let dangerous: boolean = false;
@@ -28,10 +28,7 @@
         <button class="btn" on:click={handleCancel}>
           {cancelText}
         </button>
-        <button
-          class="btn {dangerous ? 'btn-error' : 'btn-primary'}"
-          on:click={handleConfirm}
-        >
+        <button class="btn {dangerous ? 'btn-error' : 'btn-primary'}" on:click={handleConfirm}>
           {confirmText}
         </button>
       </div>

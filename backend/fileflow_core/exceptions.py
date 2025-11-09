@@ -1,59 +1,60 @@
 """
 Custom exceptions for FileFlow Manager.
 
-Provides specific exception types for better error handling.
+This module re-exports the enhanced error handling system for backwards compatibility.
+For new code, import directly from fileflow_core.errors.
 """
 
+# Re-export all error classes from the new error handling system
+from fileflow_core.errors import (
+    ConfigurationError,
+    DatabaseError,
+    DuplicateDetectionError,
+    ErrorSeverity,
+    FileFlowError,
+    FileOperationError,
+    NetworkError,
+    OperationCancelledError,
+    RetryableError,
+    RuleError,
+    ScanError,
+    TransientFileError,
+    ValidationError,
+    format_error_for_user,
+)
 
-class FileFlowError(Exception):
-    """Base exception for FileFlow errors."""
-
-    pass
-
-
-class ConfigurationError(FileFlowError):
-    """Configuration-related errors."""
-
-    pass
-
-
-class ValidationError(FileFlowError):
-    """Validation errors."""
-
-    pass
-
-
-class FileOperationError(FileFlowError):
-    """File operation errors."""
-
-    pass
+# Legacy aliases for backwards compatibility
+PermissionError = FileOperationError
+DiskSpaceError = FileOperationError
 
 
-class PermissionError(FileFlowError):
-    """Permission-related errors."""
+class RuleNotFoundError(RuleError):
+    """Rule not found error (backwards compatibility alias)."""
 
-    pass
-
-
-class DiskSpaceError(FileFlowError):
-    """Disk space errors."""
-
-    pass
+    def __init__(self, message: str, rule_id: str | None = None):
+        """Initialize rule not found error."""
+        super().__init__(message, rule_id=rule_id, rule_name=None)
 
 
-class RuleNotFoundError(FileFlowError):
-    """Rule not found error."""
-
-    pass
-
-
-class DatabaseError(FileFlowError):
-    """Database operation errors."""
-
-    pass
-
-
-class ScanError(FileFlowError):
-    """File scanning errors."""
-
-    pass
+__all__ = [
+    # Core error classes
+    "FileFlowError",
+    "ErrorSeverity",
+    "format_error_for_user",
+    # Specific error types
+    "ConfigurationError",
+    "FileOperationError",
+    "DatabaseError",
+    "ValidationError",
+    "ScanError",
+    "DuplicateDetectionError",
+    "RuleError",
+    "OperationCancelledError",
+    "RetryableError",
+    "TransientFileError",
+    "NetworkError",
+    # Backwards compatibility aliases
+    "PermissionError",
+    "DiskSpaceError",
+    "RuleNotFoundError",
+]

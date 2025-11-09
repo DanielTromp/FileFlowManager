@@ -1,11 +1,11 @@
 <script lang="ts">
-  import type { FileMetadata } from '$lib/types';
+  import type { FileMetadata } from "$lib/types";
 
   export let files: FileMetadata[] = [];
   export let selectedFiles: Set<string> = new Set();
   export let onToggleSelection: (filePath: string) => void = () => {};
   export let showCheckboxes: boolean = true;
-  export let emptyMessage: string = 'No files found';
+  export let emptyMessage: string = "No files found";
 
   function formatSize(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`;

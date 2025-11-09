@@ -23,10 +23,7 @@ export interface ShortcutGroup {
 /**
  * Check if a keyboard event matches a shortcut definition
  */
-export function matchesShortcut(
-  event: KeyboardEvent,
-  shortcut: KeyboardShortcut
-): boolean {
+export function matchesShortcut(event: KeyboardEvent, shortcut: KeyboardShortcut): boolean {
   // Check main key
   if (event.key.toLowerCase() !== shortcut.key.toLowerCase()) {
     return false;
@@ -52,34 +49,28 @@ export function matchesShortcut(
  * Format shortcut for display
  */
 export function formatShortcut(shortcut: KeyboardShortcut): string {
-  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
   const parts: string[] = [];
 
-  if (shortcut.ctrl) parts.push(isMac ? '⌃' : 'Ctrl');
-  if (shortcut.meta) parts.push(isMac ? '⌘' : 'Cmd');
-  if (shortcut.alt) parts.push(isMac ? '⌥' : 'Alt');
-  if (shortcut.shift) parts.push(isMac ? '⇧' : 'Shift');
+  if (shortcut.ctrl) parts.push(isMac ? "⌃" : "Ctrl");
+  if (shortcut.meta) parts.push(isMac ? "⌘" : "Cmd");
+  if (shortcut.alt) parts.push(isMac ? "⌥" : "Alt");
+  if (shortcut.shift) parts.push(isMac ? "⇧" : "Shift");
 
   // Capitalize key
   parts.push(shortcut.key.toUpperCase());
 
-  return parts.join(isMac ? '' : '+');
+  return parts.join(isMac ? "" : "+");
 }
 
 /**
  * Register keyboard shortcuts with cleanup
  */
-export function registerShortcuts(
-  shortcuts: KeyboardShortcut[]
-): () => void {
+export function registerShortcuts(shortcuts: KeyboardShortcut[]): () => void {
   const handler = (event: KeyboardEvent) => {
     // Don't trigger shortcuts when typing in inputs
     const target = event.target as HTMLElement;
-    if (
-      target.tagName === 'INPUT' ||
-      target.tagName === 'TEXTAREA' ||
-      target.isContentEditable
-    ) {
+    if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
       return;
     }
 
@@ -93,11 +84,11 @@ export function registerShortcuts(
     }
   };
 
-  window.addEventListener('keydown', handler);
+  window.addEventListener("keydown", handler);
 
   // Return cleanup function
   return () => {
-    window.removeEventListener('keydown', handler);
+    window.removeEventListener("keydown", handler);
   };
 }
 
@@ -106,21 +97,21 @@ export function registerShortcuts(
  */
 export const COMMON_SHORTCUTS = {
   // Navigation
-  DASHBOARD: { key: '1', meta: true, description: 'Go to Dashboard' },
-  RULES: { key: '2', meta: true, description: 'Go to Rules' },
-  LARGE_FILES: { key: '3', meta: true, description: 'Go to Large Files' },
-  OLD_FILES: { key: '4', meta: true, description: 'Go to Old Files' },
-  SETTINGS: { key: '5', meta: true, description: 'Go to Settings' },
+  DASHBOARD: { key: "1", meta: true, description: "Go to Dashboard" },
+  RULES: { key: "2", meta: true, description: "Go to Rules" },
+  LARGE_FILES: { key: "3", meta: true, description: "Go to Large Files" },
+  OLD_FILES: { key: "4", meta: true, description: "Go to Old Files" },
+  SETTINGS: { key: "5", meta: true, description: "Go to Settings" },
 
   // Actions
-  SCAN: { key: 's', meta: true, description: 'Start Scan' },
-  REFRESH: { key: 'r', meta: true, description: 'Refresh Data' },
-  EXECUTE: { key: 'e', meta: true, shift: true, description: 'Execute Operations' },
-  NEW_RULE: { key: 'n', meta: true, description: 'Create New Rule' },
+  SCAN: { key: "s", meta: true, description: "Start Scan" },
+  REFRESH: { key: "r", meta: true, description: "Refresh Data" },
+  EXECUTE: { key: "e", meta: true, shift: true, description: "Execute Operations" },
+  NEW_RULE: { key: "n", meta: true, description: "Create New Rule" },
 
   // UI
-  HELP: { key: '?', shift: true, description: 'Show Keyboard Shortcuts' },
-  ESCAPE: { key: 'Escape', description: 'Cancel/Close' },
+  HELP: { key: "?", shift: true, description: "Show Keyboard Shortcuts" },
+  ESCAPE: { key: "Escape", description: "Cancel/Close" },
 };
 
 /**
@@ -129,10 +120,7 @@ export const COMMON_SHORTCUTS = {
  * Usage:
  * <div use:shortcuts={myShortcuts}>
  */
-export function shortcuts(
-  _node: HTMLElement,
-  shortcutList: KeyboardShortcut[]
-) {
+export function shortcuts(_node: HTMLElement, shortcutList: KeyboardShortcut[]) {
   const cleanup = registerShortcuts(shortcutList);
 
   return {

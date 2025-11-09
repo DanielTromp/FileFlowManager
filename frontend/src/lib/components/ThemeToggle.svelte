@@ -4,11 +4,17 @@
    * Allows users to switch between light, dark, and system themes
    */
 
-  import { themePreference, setTheme, getThemeIcon, getThemeLabel, type Theme } from '$lib/stores/theme';
+  import {
+    themePreference,
+    setTheme,
+    getThemeIcon,
+    getThemeLabel,
+    type Theme,
+  } from "$lib/stores/theme";
 
   let isOpen = false;
 
-  const themes: Theme[] = ['light', 'dark', 'system'];
+  const themes: Theme[] = ["light", "dark", "system"];
 
   function selectTheme(theme: Theme) {
     setTheme(theme);
@@ -22,7 +28,7 @@
   // Close dropdown when clicking outside
   function handleClickOutside(event: MouseEvent) {
     const target = event.target as HTMLElement;
-    if (!target.closest('.theme-toggle-dropdown')) {
+    if (!target.closest(".theme-toggle-dropdown")) {
       isOpen = false;
     }
   }

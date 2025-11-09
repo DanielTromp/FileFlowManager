@@ -184,7 +184,7 @@ else
 fi
 
 #
-# 5. VERIFY TOOLS
+# 5. VERIFY TOOLS & RUN QUALITY CHECKS
 #
 echo ""
 info "Verifying installation..."
@@ -197,6 +197,30 @@ else
     error "Backend CLI verification failed"
     exit 1
 fi
+
+# Verify backend module imports
+info "Verifying backend modules..."
+if poetry run python -c "import fileflow_core, fileflow_config, fileflow_storage, fileflow_cli, fileflow_api" 2>/dev/null; then
+    success "Backend modules can be imported"
+else
+    warning "Backend module import verification had issues (non-critical)"
+fi
+
+# Run backend quality checks
+info "Running backend linting (Ruff)..."
+if poetry run ruff check . --quiet 2>/dev/null; then
+    success "Backend linting passed"
+else
+    warning "Backend linting found issues (non-critical)"
+fi
+
+info "Running backend type checking (mypy)..."
+if poetry run mypy fileflow_core fileflow_config fileflow_storage fileflow_cli fileflow_api --no-error-summary 2>/dev/null; then
+    success "Backend type checking passed"
+else
+    warning "Backend type checking found issues (non-critical)"
+fi
+
 cd ..
 
 # Test frontend build tools
@@ -207,6 +231,29 @@ else
     error "Frontend build tools verification failed"
     exit 1
 fi
+
+# Run frontend quality checks
+info "Running frontend type checking..."
+if pnpm type-check >/dev/null 2>&1; then
+    success "Frontend type checking passed"
+else
+    warning "Frontend type checking found issues (non-critical)"
+fi
+
+info "Running frontend linting (ESLint)..."
+if pnpm lint --max-warnings 100 >/dev/null 2>&1; then
+    success "Frontend linting passed"
+else
+    warning "Frontend linting found issues (non-critical)"
+fi
+
+info "Running frontend formatting check (Prettier)..."
+if pnpm run format:check >/dev/null 2>&1; then
+    success "Frontend formatting check passed"
+else
+    warning "Frontend formatting needs attention (run: pnpm run format)"
+fi
+
 cd ..
 
 #

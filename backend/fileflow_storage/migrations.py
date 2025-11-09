@@ -7,7 +7,6 @@ Simple migration system for schema changes.
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import List
 
 
 class Migration:
@@ -86,7 +85,7 @@ class MigrationManager:
         self.db_path = Path(db_path)
         self.conn = sqlite3.connect(str(self.db_path))
         self._create_migration_table()
-        self.migrations: List[Migration] = [InitialSchema()]
+        self.migrations: list[Migration] = [InitialSchema()]
 
     def _create_migration_table(self) -> None:
         """Create migrations tracking table."""

@@ -4,19 +4,30 @@ Typer CLI commands for FileFlow Manager.
 
 import json
 import subprocess
+import sys
+from datetime import datetime
 from pathlib import Path
-from typing import Optional, Any, Dict
+from typing import Annotated, Any
 
 import typer
 from rich.console import Console
 from rich.table import Table
-from typing_extensions import Annotated
 
+from fileflow_cli.output import (
+    ExitCode,
+    JSONOutput,
+    OutputFormat,
+    Paginator,
+    confirm_action,
+    create_table,
+    format_age,
+    format_file_size,
+    format_path,
+)
 from fileflow_config.config_manager import ConfigManager
 from fileflow_config.defaults import create_default_config_file
-from fileflow_core.logging_config import setup_logging
-from fileflow_core.rule_engine import RuleEngine
 from fileflow_core.models import OperationType
+from fileflow_core.rule_engine import RuleEngine
 from fileflow_storage.cache import ChecksumCache
 from fileflow_storage.database import Database
 
@@ -25,7 +36,7 @@ app = typer.Typer(
     pretty_exceptions_show_locals=False,
     add_completion=True  # T152: Enable shell completion support
 )
-console = Console()
+console = Console()  # Keep for backward compatibility
 
 # Default paths
 DEFAULT_CONFIG_PATH = Path.home() / ".config" / "fileflow" / "fileflow.toml"
@@ -56,22 +67,13 @@ def output_json(data: Any) -> None:
     print(json.dumps(data, indent=2, default=str))
 
 
-def format_age(age_days: float) -> str:
-    """Format file age in human-readable format."""
-    if age_days < 1:
-        return "< 1 day"
-    elif age_days < 30:
-        return f"{int(age_days)} days"
-    elif age_days < 365:
-        months = int(age_days / 30)
-        return f"{months} month{'s' if months > 1 else ''}"
-    else:
-        years = age_days / 365
-        return f"{years:.1f} year{'s' if years >= 2 else ''}"
-
-
 @app.command()
-def scan() -> None:
+def scan(
+    output_format: Annotated[
+        str,
+        typer.Option("--output", "-o", help="Output format (table, json)")
+    ] = "table",
+) -> None:
     """
     Scan directories for files matching active rules and execute operations.
 
@@ -79,37 +81,106 @@ def scan() -> None:
     matching file organization rules. Files will be moved/organized based
     on your active rules.
 
-    For a preview without making changes, the dry-run functionality
-    can be added in a future update.
+    Examples:
+        # Scan and execute file organization
+        fileflow scan
+
+        # Scan with JSON output for scripting
+        fileflow scan --output json
     """
+    out = OutputFormat()
     dry_run = False  # Always execute for now
 
-    # Setup
-    config_mgr = get_config_manager()
-    config = config_mgr.load()
-    db = get_database()
-    cache = ChecksumCache(db)
-    engine = RuleEngine(db, cache, config_mgr.expand_env_vars)
+    try:
+        # Setup
+        config_mgr = get_config_manager()
+        config = config_mgr.load()
+        db = get_database()
+        cache = ChecksumCache(db)
+        engine = RuleEngine(db, cache, config_mgr.expand_env_vars)
+    except Exception as e:
+        if output_format == "json":
+            JSONOutput.print(
+                JSONOutput.error(
+                    f"Failed to initialize scan: {e}",
+                    code=ExitCode.CONFIG_ERROR,
+                )
+            )
+        else:
+            out.print(f"[red]Error: Failed to initialize scan: {e}[/red]")
+        sys.exit(ExitCode.CONFIG_ERROR)
 
     # Use all enabled rules
     rule_list = config.rules
 
     # Run scan
-    console.print("\n[bold]FileFlow Scan Results[/bold]")
-    console.print("=" * 64)
+    if output_format != "json":
+        out.print("\n[bold]FileFlow Scan Results[/bold]")
+        out.print("=" * 64)
 
-    with console.status("[bold green]Scanning files..."):
-        result = engine.scan(rule_list, dry_run=dry_run)
+    try:
+        if output_format != "json":
+            with out.console.status("[bold green]Scanning files..."):
+                result = engine.scan(rule_list, dry_run=dry_run)
+        else:
+            result = engine.scan(rule_list, dry_run=dry_run)
+    except Exception as e:
+        if output_format == "json":
+            JSONOutput.print(
+                JSONOutput.error(f"Scan failed: {e}", code=ExitCode.GENERAL_ERROR)
+            )
+        else:
+            out.print(f"[red]Error: Scan failed: {e}[/red]")
+        sys.exit(ExitCode.GENERAL_ERROR)
 
-    # Display results
-    console.print(f"\nScan completed in {result.scan_duration_ms / 1000:.1f}s\n")
-    console.print(f"Files Scanned:     {result.total_files_scanned:,}")
-    console.print(f"Files Matched:     {result.files_matched:,}")
-    console.print(f"Duplicates Found:  {len(result.duplicate_pairs):,}")
+    # Prepare operation counts
+    move_count = sum(1 for op in result.planned_operations if op.operation_type.name == "MOVE")
+    delete_count = sum(1 for op in result.planned_operations if op.operation_type.name == "DELETE")
+    skip_count = sum(1 for op in result.planned_operations if op.operation_type.name == "SKIP")
+
+    # Handle JSON output
+    if output_format == "json":
+        operations_data = [
+            {
+                "type": op.operation_type.name,
+                "source_path": op.source_path,
+                "destination_path": op.destination_path,
+                "file_size": op.file_size,
+                "skip_reason": op.skip_reason.value if op.skip_reason else None,
+            }
+            for op in result.planned_operations
+        ]
+
+        JSONOutput.print(
+            JSONOutput.success(
+                data={
+                    "scan_duration_ms": result.scan_duration_ms,
+                    "total_files_scanned": result.total_files_scanned,
+                    "files_matched": result.files_matched,
+                    "duplicates_found": len(result.duplicate_pairs),
+                    "operations": operations_data,
+                    "summary": {
+                        "total_operations": len(result.planned_operations),
+                        "move_operations": move_count,
+                        "delete_operations": delete_count,
+                        "skip_operations": skip_count,
+                        "estimated_space_freed_mb": result.estimated_space_freed_mb,
+                    },
+                },
+                message="Scan completed successfully",
+            )
+        )
+        sys.exit(ExitCode.SUCCESS)
+
+    # Display results (table format)
+    out.print(f"\nScan completed in {result.scan_duration_ms / 1000:.1f}s\n")
+    out.print(f"Files Scanned:     {result.total_files_scanned:,}")
+    out.print(f"Files Matched:     {result.files_matched:,}")
+    out.print(f"Duplicates Found:  {len(result.duplicate_pairs):,}")
 
     if result.planned_operations:
-        console.print("\n[bold]Planned Operations[/bold]")
-        console.print("-" * 64)
+        out.print("\n[bold]Planned Operations[/bold]")
+        out.print("-" * 64)
 
         # Show first 20 operations
         for op in result.planned_operations[:20]:
@@ -117,44 +188,45 @@ def scan() -> None:
             source_name = Path(op.source_path).name
 
             if op.operation_type.name == "MOVE":
-                console.print(f"[green]{op_type}[/green]    {source_name}")
-                console.print(f"        → {op.destination_path}")
+                out.print(f"[green]{op_type}[/green]    {source_name}")
+                out.print(f"        → {op.destination_path}")
             elif op.operation_type.name == "DELETE":
-                console.print(f"[red]{op_type}[/red]  {source_name} (duplicate)")
-                console.print(f"        Space freed: {op.file_size / (1024*1024):.1f} MB")
+                out.print(f"[red]{op_type}[/red]  {source_name} (duplicate)")
+                out.print(f"        Space freed: {op.file_size / (1024*1024):.1f} MB")
             elif op.operation_type.name == "SKIP":
-                console.print(f"[yellow]{op_type}[/yellow]    {source_name}")
+                out.print(f"[yellow]{op_type}[/yellow]    {source_name}")
                 if op.skip_reason:
-                    console.print(f"        ! {op.skip_reason.value}")
+                    out.print(f"        ! {op.skip_reason.value}")
 
         if len(result.planned_operations) > 20:
-            console.print(f"\n... [{len(result.planned_operations) - 20} more operations]")
+            out.print(f"\n... [{len(result.planned_operations) - 20} more operations]")
 
     # Summary
-    console.print("\n[bold]Summary[/bold]")
-    console.print("-" * 64)
-    console.print(f"Total operations:         {len(result.planned_operations)}")
-
-    move_count = sum(1 for op in result.planned_operations if op.operation_type.name == "MOVE")
-    delete_count = sum(1 for op in result.planned_operations if op.operation_type.name == "DELETE")
-    skip_count = sum(1 for op in result.planned_operations if op.operation_type.name == "SKIP")
-
-    console.print(f"  Move operations:        {move_count}")
-    console.print(f"  Delete operations:      {delete_count}")
-    console.print(f"  Skipped:                {skip_count}")
-    console.print(f"\nEstimated space freed:   {result.estimated_space_freed_mb:.1f} MB")
+    out.print("\n[bold]Summary[/bold]")
+    out.print("-" * 64)
+    out.print(f"Total operations:         {len(result.planned_operations)}")
+    out.print(f"  Move operations:        {move_count}")
+    out.print(f"  Delete operations:      {delete_count}")
+    out.print(f"  Skipped:                {skip_count}")
+    out.print(f"\nEstimated space freed:   {result.estimated_space_freed_mb:.1f} MB")
 
     if dry_run:
-        console.print("\n[yellow]To execute these operations, run:[/yellow]")
-        console.print("  [bold]fileflow scan --execute[/bold]\n")
+        out.print("\n[yellow]To execute these operations, run:[/yellow]")
+        out.print("  [bold]fileflow scan --execute[/bold]\n")
     else:
         # Execute operations
-        console.print("\n[bold green]Executing operations...[/bold green]")
-        with console.status("[bold green]Processing files..."):
-            executed = engine.execute(result.planned_operations)
+        out.print("\n[bold green]Executing operations...[/bold green]")
+        try:
+            with out.console.status("[bold green]Processing files..."):
+                executed = engine.execute(result.planned_operations)
 
-        success_count = sum(1 for op in executed if op.success)
-        console.print(f"\n[green]✓ Successfully processed {success_count} files[/green]\n")
+            success_count = sum(1 for op in executed if op.success)
+            out.print(f"\n[green]✓ Successfully processed {success_count} files[/green]\n")
+        except Exception as e:
+            out.print(f"[red]Error during execution: {e}[/red]")
+            sys.exit(ExitCode.GENERAL_ERROR)
+
+    sys.exit(ExitCode.SUCCESS)
 
 
 @app.command()
@@ -185,90 +257,261 @@ app.add_typer(rules_app, name="rules")
 
 
 @rules_app.command("list")
-def rules_list() -> None:
-    """List all configured rules."""
-    config_mgr = get_config_manager()
-    config = config_mgr.load()
+def rules_list(
+    output_format: Annotated[
+        str,
+        typer.Option("--output", "-o", help="Output format (table, json, simple)")
+    ] = "table",
+    limit: Annotated[
+        int | None,
+        typer.Option("--limit", "-l", help="Limit number of rules shown")
+    ] = None,
+    page: Annotated[
+        int,
+        typer.Option("--page", "-p", help="Page number (for pagination)")
+    ] = 1,
+    no_pagination: Annotated[
+        bool,
+        typer.Option("--no-pagination", help="Disable pagination")
+    ] = False,
+) -> None:
+    """
+    List all configured rules.
+
+    Examples:
+        # List all rules with pretty table
+        fileflow rules list
+
+        # Output as JSON (good for scripts)
+        fileflow rules list --output json
+
+        # Show first 5 rules only
+        fileflow rules list --limit 5
+
+        # View page 2 of results
+        fileflow rules list --page 2
+    """
+    out = OutputFormat()
+
+    try:
+        config_mgr = get_config_manager()
+        config = config_mgr.load()
+    except Exception as e:
+        if output_format == "json":
+            JSONOutput.print(
+                JSONOutput.error(
+                    f"Failed to load configuration: {e}",
+                    code=ExitCode.CONFIG_ERROR,
+                )
+            )
+        else:
+            out.print(f"[red]Error: Failed to load configuration: {e}[/red]")
+        sys.exit(ExitCode.CONFIG_ERROR)
 
     if not config.rules:
-        console.print("[yellow]No rules configured.[/yellow]")
-        console.print("Run [bold]fileflow rules create[/bold] to add a rule.")
-        return
+        if output_format == "json":
+            JSONOutput.print(
+                JSONOutput.success(data=[], message="No rules configured")
+            )
+        else:
+            out.print("[yellow]No rules configured.[/yellow]")
+            out.print("Run [bold]fileflow rules create[/bold] to add a rule.")
+        sys.exit(ExitCode.SUCCESS)
 
-    console.print("\n[bold]Configured Rules[/bold]")
-    console.print("=" * 80)
+    # Sort rules by priority
+    rules = sorted(config.rules, key=lambda r: r.priority)
 
-    table = Table(show_header=True, header_style="bold cyan")
-    table.add_column("ID", style="cyan")
-    table.add_column("Name")
-    table.add_column("Priority", justify="center")
-    table.add_column("Enabled", justify="center")
-    table.add_column("Patterns")
-    table.add_column("Source Dirs", no_wrap=False)
+    # Apply limit if specified
+    if limit:
+        rules = rules[:limit]
 
-    for rule in sorted(config.rules, key=lambda r: r.priority):
-        enabled_str = "[green]✓[/green]" if rule.enabled else "[red]✗[/red]"
+    # Handle JSON output
+    if output_format == "json":
+        rules_data = [
+            {
+                "id": rule.id,
+                "name": rule.name,
+                "priority": rule.priority,
+                "enabled": rule.enabled,
+                "source_patterns": rule.source_patterns,
+                "source_directories": rule.source_directories,
+                "destination": rule.destination,
+            }
+            for rule in rules
+        ]
+        JSONOutput.print(
+            JSONOutput.success(
+                data=rules_data,
+                metadata={
+                    "total_rules": len(config.rules),
+                    "shown_rules": len(rules),
+                },
+            )
+        )
+        sys.exit(ExitCode.SUCCESS)
+
+    # Handle simple text output (for piping)
+    if output_format == "simple":
+        for rule in rules:
+            status = "enabled" if rule.enabled else "disabled"
+            print(f"{rule.id}\t{rule.name}\t{rule.priority}\t{status}")
+        sys.exit(ExitCode.SUCCESS)
+
+    # Table output with optional pagination
+    paginator = Paginator(rules, auto_detect=True)
+    should_paginate = (
+        paginator.should_paginate() and not no_pagination and out.should_paginate
+    )
+
+    if should_paginate:
+        page_rules = paginator.get_page(page)
+        if not page_rules:
+            out.print(f"[red]Error: Page {page} out of range (1-{paginator.total_pages})[/red]")
+            sys.exit(ExitCode.INVALID_USAGE)
+    else:
+        page_rules = rules
+
+    out.print("\n[bold]Configured Rules[/bold]")
+    out.print("=" * 80)
+
+    rows = []
+    for rule in page_rules:
+        enabled_str = "✓" if rule.enabled else "✗"
         patterns = ", ".join(rule.source_patterns[:3])
         if len(rule.source_patterns) > 3:
             patterns += f", +{len(rule.source_patterns) - 3}"
 
-        source_dirs = ", ".join(str(d) for d in rule.source_directories[:2])
+        source_dirs = ", ".join(format_path(d, max_length=30) for d in rule.source_directories[:2])
         if len(rule.source_directories) > 2:
             source_dirs += f", +{len(rule.source_directories) - 2}"
 
-        table.add_row(
+        rows.append([
             rule.id,
             rule.name,
             str(rule.priority),
             enabled_str,
             patterns,
             source_dirs,
-        )
+        ])
 
-    console.print(table)
-    console.print()
+    table = create_table(
+        headers=["ID", "Name", "Priority", "Enabled", "Patterns", "Source Dirs"],
+        rows=rows,
+    )
+
+    out.console.print(table)
+
+    if should_paginate:
+        out.print(f"\n{paginator.format_footer(page)}")
+        if page < paginator.total_pages:
+            out.print(
+                f"[dim]Run [bold]fileflow rules list --page {page + 1}[/bold] to see more[/dim]"
+            )
+    out.print()
+
+    sys.exit(ExitCode.SUCCESS)
 
 
 @rules_app.command("show")
-def rules_show(rule_id: Annotated[str, typer.Argument(help="Rule ID to display")]) -> None:
-    """Show detailed information about a specific rule."""
-    config_mgr = get_config_manager()
-    config = config_mgr.load()
+def rules_show(
+    rule_id: Annotated[str, typer.Argument(help="Rule ID to display")],
+    output_format: Annotated[
+        str,
+        typer.Option("--output", "-o", help="Output format (text, json)")
+    ] = "text",
+) -> None:
+    """
+    Show detailed information about a specific rule.
+
+    Examples:
+        # Show rule details
+        fileflow rules show screenshot-org
+
+        # Export as JSON
+        fileflow rules show screenshot-org --output json
+    """
+    out = OutputFormat()
+
+    try:
+        config_mgr = get_config_manager()
+        config = config_mgr.load()
+    except Exception as e:
+        if output_format == "json":
+            JSONOutput.print(
+                JSONOutput.error(
+                    f"Failed to load configuration: {e}",
+                    code=ExitCode.CONFIG_ERROR,
+                )
+            )
+        else:
+            out.print(f"[red]Error: Failed to load configuration: {e}[/red]")
+        sys.exit(ExitCode.CONFIG_ERROR)
 
     rule = next((r for r in config.rules if r.id == rule_id), None)
     if not rule:
-        console.print(f"[red]Error: Rule '{rule_id}' not found.[/red]")
-        return
+        if output_format == "json":
+            JSONOutput.print(
+                JSONOutput.error(
+                    f"Rule '{rule_id}' not found",
+                    code=ExitCode.FILE_NOT_FOUND,
+                )
+            )
+        else:
+            out.print(f"[red]Error: Rule '{rule_id}' not found.[/red]")
+        sys.exit(ExitCode.FILE_NOT_FOUND)
 
-    console.print(f"\n[bold]Rule: {rule.name}[/bold]")
-    console.print("=" * 80)
-    console.print(f"ID:               {rule.id}")
-    console.print(f"Priority:         {rule.priority}")
-    console.print(f"Enabled:          {'Yes' if rule.enabled else 'No'}")
-    console.print(f"\n[bold]Source:[/bold]")
-    console.print(f"  Directories:    {', '.join(rule.source_directories)}")
-    console.print(f"  Patterns:       {', '.join(rule.source_patterns)}")
+    # Handle JSON output
+    if output_format == "json":
+        rule_data = {
+            "id": rule.id,
+            "name": rule.name,
+            "priority": rule.priority,
+            "enabled": rule.enabled,
+            "source_directories": rule.source_directories,
+            "source_patterns": rule.source_patterns,
+            "exclude_patterns": rule.exclude_patterns,
+            "destination": rule.destination,
+            "organize_by_date": rule.organize_by_date,
+            "detect_duplicates": rule.detect_duplicates,
+            "file_types": rule.file_types,
+            "min_size_kb": rule.min_size_kb,
+            "max_size_kb": rule.max_size_kb,
+            "min_age_days": rule.min_age_days,
+            "max_age_days": rule.max_age_days,
+        }
+        JSONOutput.print(JSONOutput.success(data=rule_data))
+        sys.exit(ExitCode.SUCCESS)
+
+    out.print(f"\n[bold]Rule: {rule.name}[/bold]")
+    out.print("=" * 80)
+    out.print(f"ID:               {rule.id}")
+    out.print(f"Priority:         {rule.priority}")
+    out.print(f"Enabled:          {'Yes' if rule.enabled else 'No'}")
+    out.print("\n[bold]Source:[/bold]")
+    out.print(f"  Directories:    {', '.join(rule.source_directories)}")
+    out.print(f"  Patterns:       {', '.join(rule.source_patterns)}")
     if rule.exclude_patterns:
-        console.print(f"  Exclude:        {', '.join(rule.exclude_patterns)}")
+        out.print(f"  Exclude:        {', '.join(rule.exclude_patterns)}")
     if rule.file_types:
-        console.print(f"  File Types:     {', '.join(rule.file_types)}")
-    console.print(f"\n[bold]Destination:[/bold]")
-    console.print(f"  Path:           {rule.destination}")
+        out.print(f"  File Types:     {', '.join(rule.file_types)}")
+    out.print("\n[bold]Destination:[/bold]")
+    out.print(f"  Path:           {rule.destination}")
     if rule.organize_by_date:
-        console.print(f"  Organize:       By date (YYYY/MM/DD)")
+        out.print("  Organize:       By date (YYYY/MM/DD)")
     if rule.min_size_kb or rule.max_size_kb:
-        console.print(f"\n[bold]Size Constraints:[/bold]")
+        out.print("\n[bold]Size Constraints:[/bold]")
         if rule.min_size_kb:
-            console.print(f"  Minimum:        {rule.min_size_kb} KB")
+            out.print(f"  Minimum:        {rule.min_size_kb} KB")
         if rule.max_size_kb:
-            console.print(f"  Maximum:        {rule.max_size_kb} KB")
+            out.print(f"  Maximum:        {rule.max_size_kb} KB")
     if rule.min_age_days or rule.max_age_days:
-        console.print(f"\n[bold]Age Constraints:[/bold]")
+        out.print("\n[bold]Age Constraints:[/bold]")
         if rule.min_age_days:
-            console.print(f"  Minimum:        {rule.min_age_days} days")
+            out.print(f"  Minimum:        {rule.min_age_days} days")
         if rule.max_age_days:
-            console.print(f"  Maximum:        {rule.max_age_days} days")
-    console.print()
+            out.print(f"  Maximum:        {rule.max_age_days} days")
+    out.print()
+    sys.exit(ExitCode.SUCCESS)
 
 
 @rules_app.command("create")
@@ -307,9 +550,11 @@ def rules_create() -> None:
     priority = typer.prompt("Priority (1-1000, lower runs first)", default="500", type=int)
 
     # Create rule
+    description = typer.prompt("Description (optional)", default="")
     new_rule = Rule(
         id=rule_id,
         name=name,
+        description=description or f"Rule for organizing {name}",
         priority=priority,
         enabled=True,
         source_directories=source_directories,
@@ -339,7 +584,7 @@ def rules_create() -> None:
     config_mgr.save(config)
 
     console.print(f"\n[green]✓ Rule '{name}' created successfully![/green]")
-    console.print(f"Run [bold]fileflow scan[/bold] to apply this rule.\n")
+    console.print("Run [bold]fileflow scan[/bold] to apply this rule.\n")
 
 
 @rules_app.command("update")
@@ -389,27 +634,49 @@ def rules_update(rule_id: Annotated[str, typer.Argument(help="Rule ID to update"
 
 
 @rules_app.command("delete")
-def rules_delete(rule_id: Annotated[str, typer.Argument(help="Rule ID to delete")]) -> None:
-    """Delete a rule."""
-    config_mgr = get_config_manager()
-    config = config_mgr.load()
+def rules_delete(
+    rule_id: Annotated[str, typer.Argument(help="Rule ID to delete")],
+    yes: Annotated[
+        bool,
+        typer.Option("--yes", "-y", help="Skip confirmation prompt")
+    ] = False,
+) -> None:
+    """
+    Delete a rule.
+
+    Examples:
+        # Delete with confirmation
+        fileflow rules delete screenshot-org
+
+        # Skip confirmation
+        fileflow rules delete screenshot-org --yes
+    """
+    out = OutputFormat()
+
+    try:
+        config_mgr = get_config_manager()
+        config = config_mgr.load()
+    except Exception as e:
+        out.print(f"[red]Error: Failed to load configuration: {e}[/red]")
+        sys.exit(ExitCode.CONFIG_ERROR)
 
     rule = next((r for r in config.rules if r.id == rule_id), None)
     if not rule:
-        console.print(f"[red]Error: Rule '{rule_id}' not found.[/red]")
-        return
+        out.print(f"[red]Error: Rule '{rule_id}' not found.[/red]")
+        sys.exit(ExitCode.FILE_NOT_FOUND)
 
     # Confirm deletion
-    confirm = typer.confirm(f"Delete rule '{rule.name}'?")
-    if not confirm:
-        console.print("[yellow]Deletion cancelled.[/yellow]")
-        return
+    if not yes:
+        if not confirm_action(f"Delete rule '{rule.name}'?", default=False):
+            out.print("[yellow]Deletion cancelled.[/yellow]")
+            sys.exit(ExitCode.OPERATION_CANCELLED)
 
-    # Remove rule
+    # Delete rule
     config.rules = [r for r in config.rules if r.id != rule_id]
     config_mgr.save(config)
 
-    console.print(f"\n[green]✓ Rule '{rule.name}' deleted successfully![/green]\n")
+    out.print(f"[green]✓ Rule '{rule.name}' deleted successfully.[/green]")
+    sys.exit(ExitCode.SUCCESS)
 
 
 @rules_app.command("enable")
@@ -454,278 +721,489 @@ def rules_disable(rule_id: Annotated[str, typer.Argument(help="Rule ID to disabl
 
 @app.command(name="find-large")
 def find_large(
-    output_format: Annotated[str, typer.Option("--output-format", "-o", help="Output format: table or json")] = "table",
+    output_format: Annotated[
+        str,
+        typer.Option("--output", "-o", help="Output format (table, json)")
+    ] = "table",
+    threshold: Annotated[
+        int,
+        typer.Option("--threshold", "-t", help="Size threshold in MB")
+    ] = 100,
 ) -> None:
-    """Find files larger than 100MB (T153: supports JSON output)."""
+    """
+    Find files larger than specified threshold (default: 100MB).
+
+    Examples:
+        # Find files larger than 100MB
+        fileflow find-large
+
+        # Find files larger than 500MB
+        fileflow find-large --threshold 500
+
+        # Output as JSON
+        fileflow find-large --output json
+    """
     from pathlib import Path
+
     from fileflow_core.file_scanner import FileScanner
 
-    # Get monitored directories from config
-    config_mgr = get_config_manager()
-    config = config_mgr.load()
-    monitored_dirs = [Path(config_mgr.expand_env_vars(d)) for d in config.paths.monitored_directories]
+    out = OutputFormat()
 
-    # Scan for large files
-    scanner = FileScanner()
-    large_files = scanner.find_large_files(directories=monitored_dirs, threshold_mb=100)
+    try:
+        # Get monitored directories from config
+        config_mgr = get_config_manager()
+        config = config_mgr.load()
+        monitored_dirs = [Path(config_mgr.expand_env_vars(d)) for d in config.paths.monitored_directories]
+    except Exception as e:
+        if output_format == "json":
+            JSONOutput.print(
+                JSONOutput.error(
+                    f"Failed to load configuration: {e}",
+                    code=ExitCode.CONFIG_ERROR,
+                )
+            )
+        else:
+            out.print(f"[red]Error: Failed to load configuration: {e}[/red]")
+        sys.exit(ExitCode.CONFIG_ERROR)
 
+    try:
+        # Scan for large files
+        scanner = FileScanner()
+        large_files = scanner.find_large_files(directories=monitored_dirs, threshold_mb=threshold)
+    except Exception as e:
+        if output_format == "json":
+            JSONOutput.print(
+                JSONOutput.error(f"Scan failed: {e}", code=ExitCode.GENERAL_ERROR)
+            )
+        else:
+            out.print(f"[red]Error: Scan failed: {e}[/red]")
+        sys.exit(ExitCode.GENERAL_ERROR)
+
+    # Handle JSON output
     if output_format == "json":
-        # JSON output (T153)
-        output_json({
-            "threshold_mb": 100,
-            "files_found": len(large_files),
-            "total_size_mb": sum(f.size_bytes for f in large_files) / (1024 * 1024),
-            "files": [
-                {
-                    "filename": f.filename,
-                    "path": f.path,
-                    "size_bytes": f.size_bytes,
-                    "size_mb": f.size_bytes / (1024 * 1024),
-                    "age_days": f.age_days,
-                }
-                for f in large_files
-            ]
-        })
-        return
+        JSONOutput.print(
+            JSONOutput.success(
+                data=[
+                    {
+                        "filename": f.filename,
+                        "path": f.path,
+                        "size_bytes": f.size_bytes,
+                        "size_mb": f.size_bytes / (1024 * 1024),
+                        "age_days": f.age_days,
+                    }
+                    for f in large_files
+                ],
+                metadata={
+                    "threshold_mb": threshold,
+                    "files_found": len(large_files),
+                    "total_size_mb": sum(f.size_bytes for f in large_files) / (1024 * 1024),
+                },
+                message=f"Found {len(large_files)} files larger than {threshold}MB" if large_files else f"No files found larger than {threshold}MB",
+            )
+        )
+        sys.exit(ExitCode.SUCCESS)
 
     # Table output (default)
-    console.print("\n[bold]Finding files larger than 100 MB...[/bold]\n")
+    out.print(f"\n[bold]Finding files larger than {threshold} MB...[/bold]\n")
 
     if not large_files:
-        console.print("[yellow]No files found larger than 100 MB.[/yellow]")
-        return
+        out.print(f"[green]✓ No files found larger than {threshold} MB.[/green]")
+        sys.exit(ExitCode.SUCCESS)
 
     # Display results
-    from rich.table import Table
+    table = create_table(
+        headers=["File", "Size", "Path"],
+        rows=[
+            [
+                file_meta.filename,
+                format_file_size(file_meta.size_bytes),
+                format_path(Path(file_meta.path).parent, max_length=50),
+            ]
+            for file_meta in large_files[:20]
+        ],
+        title=f"Large Files (> {threshold} MB)",
+    )
 
-    table = Table(title="Large Files (> 100 MB)")
-    table.add_column("File", style="cyan")
-    table.add_column("Size", justify="right", style="yellow")
-    table.add_column("Path", style="dim")
-
-    for file_meta in large_files[:20]:  # Limit to 20 files
-        size_mb = file_meta.size_bytes / (1024 * 1024)
-        size_str = f"{size_mb:.2f} MB" if size_mb < 1024 else f"{size_mb/1024:.2f} GB"
-        table.add_row(
-            file_meta.filename,
-            size_str,
-            str(Path(file_meta.path).parent),
-        )
-
-    console.print(table)
+    out.console.print(table)
 
     # Summary
     total_size = sum(f.size_bytes for f in large_files) / (1024 * 1024)
-    console.print(f"\n[bold]Found {len(large_files)} files, total size: {total_size:.2f} MB[/bold]")
+    out.print(f"\n[bold]Found {len(large_files)} files, total size: {total_size:.2f} MB[/bold]")
+
+    if len(large_files) > 20:
+        out.print(f"[dim]Showing first 20 of {len(large_files)} files[/dim]\n")
+    else:
+        out.print()
+
+    sys.exit(ExitCode.SUCCESS)
 
 
 @app.command(name="find-old")
 def find_old(
-    output_format: Annotated[str, typer.Option("--output-format", "-o", help="Output format: table or json")] = "table",
+    output_format: Annotated[
+        str,
+        typer.Option("--output", "-o", help="Output format (table, json)")
+    ] = "table",
+    threshold: Annotated[
+        int,
+        typer.Option("--threshold", "-t", help="Age threshold in days")
+    ] = 90,
 ) -> None:
-    """Find files older than 90 days (T153: supports JSON output)."""
+    """
+    Find files older than specified threshold (default: 90 days).
+
+    Examples:
+        # Find files older than 90 days
+        fileflow find-old
+
+        # Find files older than 180 days (6 months)
+        fileflow find-old --threshold 180
+
+        # Output as JSON
+        fileflow find-old --output json
+    """
     from pathlib import Path
+
     from fileflow_core.file_scanner import FileScanner
 
-    # Get monitored directories from config
-    config_mgr = get_config_manager()
-    config = config_mgr.load()
-    monitored_dirs = [Path(config_mgr.expand_env_vars(d)) for d in config.paths.monitored_directories]
+    out = OutputFormat()
 
-    # Scan for old files (T103)
-    scanner = FileScanner()
-    old_files = scanner.find_old_files(
-        directories=monitored_dirs,
-        threshold_days=90,
-    )
+    try:
+        # Get monitored directories from config
+        config_mgr = get_config_manager()
+        config = config_mgr.load()
+        monitored_dirs = [Path(config_mgr.expand_env_vars(d)) for d in config.paths.monitored_directories]
+    except Exception as e:
+        if output_format == "json":
+            JSONOutput.print(
+                JSONOutput.error(
+                    f"Failed to load configuration: {e}",
+                    code=ExitCode.CONFIG_ERROR,
+                )
+            )
+        else:
+            out.print(f"[red]Error: Failed to load configuration: {e}[/red]")
+        sys.exit(ExitCode.CONFIG_ERROR)
 
+    try:
+        # Scan for old files
+        scanner = FileScanner()
+        old_files = scanner.find_old_files(
+            directories=monitored_dirs,
+            threshold_days=threshold,
+        )
+    except Exception as e:
+        if output_format == "json":
+            JSONOutput.print(
+                JSONOutput.error(f"Scan failed: {e}", code=ExitCode.GENERAL_ERROR)
+            )
+        else:
+            out.print(f"[red]Error: Scan failed: {e}[/red]")
+        sys.exit(ExitCode.GENERAL_ERROR)
+
+    # Calculate statistics
+    total_size_mb = sum(f.size_bytes for f in old_files) / (1024 * 1024) if old_files else 0
+    avg_age_days = sum(f.age_days for f in old_files if f.age_days) / len(old_files) if old_files else 0
+
+    # Handle JSON output
     if output_format == "json":
-        # JSON output (T153)
-        total_size_mb = sum(f.size_bytes for f in old_files) / (1024 * 1024)
-        avg_age_days = sum(f.age_days for f in old_files if f.age_days) / len(old_files) if old_files else 0
-        output_json({
-            "threshold_days": 90,
-            "files_found": len(old_files),
-            "total_size_mb": total_size_mb,
-            "average_age_days": avg_age_days,
-            "files": [
-                {
-                    "filename": f.filename,
-                    "path": f.path,
-                    "size_bytes": f.size_bytes,
-                    "size_mb": f.size_bytes / (1024 * 1024),
-                    "age_days": f.age_days,
-                }
-                for f in old_files
-            ]
-        })
-        return
+        JSONOutput.print(
+            JSONOutput.success(
+                data=[
+                    {
+                        "filename": f.filename,
+                        "path": f.path,
+                        "size_bytes": f.size_bytes,
+                        "size_mb": f.size_bytes / (1024 * 1024),
+                        "age_days": f.age_days,
+                    }
+                    for f in old_files
+                ],
+                metadata={
+                    "threshold_days": threshold,
+                    "files_found": len(old_files),
+                    "total_size_mb": total_size_mb,
+                    "average_age_days": avg_age_days,
+                },
+                message=f"Found {len(old_files)} files older than {threshold} days" if old_files else f"No files found older than {threshold} days",
+            )
+        )
+        sys.exit(ExitCode.SUCCESS)
 
     # Table output (default)
-    console.print("\n[bold]Finding files older than 90 days...[/bold]\n")
+    out.print(f"\n[bold]Finding files older than {threshold} days...[/bold]\n")
 
     if not old_files:
-        console.print("[yellow]No files found older than 90 days.[/yellow]")
-        return
+        out.print(f"[green]✓ No files found older than {threshold} days.[/green]")
+        sys.exit(ExitCode.SUCCESS)
 
-    # Display results in table (T103)
-    from rich.table import Table
+    # Display results in table
+    table = create_table(
+        headers=["File", "Age", "Size", "Path"],
+        rows=[
+            [
+                file_meta.filename,
+                format_age(file_meta.age_days) if file_meta.age_days else "N/A",
+                format_file_size(file_meta.size_bytes),
+                format_path(Path(file_meta.path).parent, max_length=40),
+            ]
+            for file_meta in old_files[:20]
+        ],
+        title=f"Old Files (> {threshold} days)",
+    )
 
-    table = Table(title="Old Files (> 90 days)")
-    table.add_column("File", style="cyan")
-    table.add_column("Age", justify="right", style="yellow")
-    table.add_column("Size", justify="right")
-    table.add_column("Path", style="dim")
+    out.console.print(table)
 
-    for file_meta in old_files[:20]:  # Limit to 20 files
-        age_str = format_age(file_meta.age_days) if file_meta.age_days else "N/A"
-        size_mb = file_meta.size_bytes / (1024 * 1024)
-        size_str = f"{size_mb:.2f} MB" if size_mb < 1024 else f"{size_mb/1024:.2f} GB"
-        table.add_row(
-            file_meta.filename,
-            age_str,
-            size_str,
-            str(Path(file_meta.path).parent),
-        )
+    # Summary
+    out.print(f"\n[bold]Found {len(old_files)} files, total size: {total_size_mb:.2f} MB[/bold]")
+    out.print(f"[bold]Average age: {avg_age_days:.0f} days ({avg_age_days/365:.1f} years)[/bold]")
 
-    console.print(table)
+    if len(old_files) > 20:
+        out.print(f"[dim]Showing first 20 of {len(old_files)} files[/dim]\n")
+    else:
+        out.print()
 
-    # Summary (T105)
-    total_size_mb = sum(f.size_bytes for f in old_files) / (1024 * 1024)
-    avg_age_days = sum(f.age_days for f in old_files if f.age_days) / len(old_files) if old_files else 0
-    console.print(f"\n[bold]Found {len(old_files)} files, total size: {total_size_mb:.2f} MB[/bold]")
-    console.print(f"[bold]Average age: {avg_age_days:.0f} days ({avg_age_days/365:.1f} years)[/bold]\n")
+    sys.exit(ExitCode.SUCCESS)
 
 
 # Configuration Management Commands
 
 @app.command(name="config-show")
-def config_show() -> None:
-    """Show current configuration (T119)."""
-    console.print("\n[bold]Current Configuration[/bold]\n")
+def config_show(
+    output_format: Annotated[
+        str,
+        typer.Option("--output", "-o", help="Output format (table, json)")
+    ] = "table",
+) -> None:
+    """
+    Show current configuration.
+
+    Examples:
+        # Show configuration
+        fileflow config-show
+
+        # Output as JSON
+        fileflow config-show --output json
+    """
+    out = OutputFormat()
 
     try:
         config_mgr = get_config_manager()
         config = config_mgr.load()
-
-        # General settings
-        console.print("[bold cyan]General Settings[/bold cyan]")
-        console.print(f"  Log level: {config.general.log_level}")
-        console.print(f"  Auto-run on startup: {config.general.auto_run_on_startup}")
-        console.print(f"  Auto-run interval: {config.general.auto_run_interval_minutes} minutes")
-        console.print(f"  Notifications: {config.general.enable_notifications}")
-        console.print(f"  Cache: {config.general.cache_enabled}")
-
-        # Paths
-        console.print(f"\n[bold cyan]Paths[/bold cyan]")
-        console.print(f"  Screenshot source: {config.paths.screenshot_source}")
-        console.print(f"  Screenshot destination: {config.paths.screenshot_destination}")
-        if config.paths.monitored_directories:
-            console.print(f"  Monitored directories: {', '.join(config.paths.monitored_directories)}")
-
-        # Rules
-        console.print(f"\n[bold cyan]Rules ({len(config.rules)})[/bold cyan]")
-        for rule in config.rules:
-            status = "✓" if rule.enabled else "✗"
-            console.print(f"  [{status}] {rule.name} ({rule.id})")
-
-        console.print()
-
     except Exception as e:
-        console.print(f"[red]Error: {e}[/red]")
-        raise typer.Exit(1)
+        if output_format == "json":
+            JSONOutput.print(
+                JSONOutput.error(
+                    f"Failed to load configuration: {e}",
+                    code=ExitCode.CONFIG_ERROR,
+                )
+            )
+        else:
+            out.print(f"[red]Error: Failed to load configuration: {e}[/red]")
+        sys.exit(ExitCode.CONFIG_ERROR)
+
+    # Handle JSON output
+    if output_format == "json":
+        JSONOutput.print(
+            JSONOutput.success(
+                data={
+                    "general": {
+                        "log_level": config.general.log_level,
+                        "auto_run_on_startup": config.general.auto_run_on_startup,
+                        "auto_run_interval_minutes": config.general.auto_run_interval_minutes,
+                        "enable_notifications": config.general.enable_notifications,
+                        "cache_enabled": config.general.cache_enabled,
+                    },
+                    "paths": {
+                        "screenshot_source": config.paths.screenshot_source,
+                        "screenshot_destination": config.paths.screenshot_destination,
+                        "monitored_directories": config.paths.monitored_directories,
+                    },
+                    "rules": [
+                        {
+                            "id": rule.id,
+                            "name": rule.name,
+                            "enabled": rule.enabled,
+                            "priority": rule.priority,
+                        }
+                        for rule in config.rules
+                    ],
+                },
+                metadata={"rules_count": len(config.rules)},
+            )
+        )
+        sys.exit(ExitCode.SUCCESS)
+
+    # Table output (default)
+    out.print("\n[bold]Current Configuration[/bold]\n")
+
+    # General settings
+    out.print("[bold cyan]General Settings[/bold cyan]")
+    out.print(f"  Log level: {config.general.log_level}")
+    out.print(f"  Auto-run on startup: {config.general.auto_run_on_startup}")
+    out.print(f"  Auto-run interval: {config.general.auto_run_interval_minutes} minutes")
+    out.print(f"  Notifications: {config.general.enable_notifications}")
+    out.print(f"  Cache: {config.general.cache_enabled}")
+
+    # Paths
+    out.print("\n[bold cyan]Paths[/bold cyan]")
+    out.print(f"  Screenshot source: {config.paths.screenshot_source}")
+    out.print(f"  Screenshot destination: {config.paths.screenshot_destination}")
+    if config.paths.monitored_directories:
+        out.print(f"  Monitored directories: {', '.join(config.paths.monitored_directories)}")
+
+    # Rules
+    out.print(f"\n[bold cyan]Rules ({len(config.rules)})[/bold cyan]")
+    for rule in config.rules:
+        status = "✓" if rule.enabled else "✗"
+        out.print(f"  [{status}] {rule.name} ({rule.id})")
+
+    out.print()
+    sys.exit(ExitCode.SUCCESS)
 
 
 @app.command(name="config-export")
 def config_export(
-    output_path: Annotated[str, typer.Argument(help="Path where to save the exported configuration")]
+    output_path: Annotated[str, typer.Argument(help="Path where to save the exported configuration")],
 ) -> None:
-    """Export configuration to TOML file (T120)."""
-    console.print(f"\n[bold]Exporting configuration to {output_path}...[/bold]\n")
+    """
+    Export configuration to TOML file.
+
+    Examples:
+        # Export configuration
+        fileflow config-export ~/backup/config.toml
+    """
+    out = OutputFormat()
+
+    out.print(f"\n[bold]Exporting configuration to {output_path}...[/bold]\n")
 
     try:
         config_mgr = get_config_manager()
         config_mgr.export(output_path)
-
-        console.print(f"[green]✓ Configuration exported successfully[/green]\n")
-
+        out.print("[green]✓ Configuration exported successfully[/green]\n")
+        sys.exit(ExitCode.SUCCESS)
     except Exception as e:
-        console.print(f"[red]Error: {e}[/red]")
-        raise typer.Exit(1)
+        out.print(f"[red]Error: {e}[/red]")
+        sys.exit(ExitCode.GENERAL_ERROR)
 
 
 @app.command(name="config-import")
 def config_import(
-    input_path: Annotated[str, typer.Argument(help="Path to configuration file to import")]
+    input_path: Annotated[str, typer.Argument(help="Path to configuration file to import")],
 ) -> None:
-    """Import configuration from TOML file (T121). Replaces existing configuration."""
-    console.print(f"\n[bold]Importing configuration from {input_path} (replace mode)...[/bold]\n")
+    """
+    Import configuration from TOML file (replaces existing configuration).
+
+    Examples:
+        # Import configuration (replaces existing)
+        fileflow config-import ~/backup/config.toml
+    """
+    out = OutputFormat()
+
+    out.print(f"\n[bold]Importing configuration from {input_path} (replace mode)...[/bold]\n")
 
     try:
         config_mgr = get_config_manager()
         config_mgr.import_config(input_path, merge=False)
-
-        console.print(f"[green]✓ Configuration imported successfully[/green]\n")
-
+        out.print("[green]✓ Configuration imported successfully[/green]\n")
+        sys.exit(ExitCode.SUCCESS)
+    except FileNotFoundError:
+        out.print(f"[red]Error: File not found: {input_path}[/red]")
+        sys.exit(ExitCode.FILE_NOT_FOUND)
     except Exception as e:
-        console.print(f"[red]Error: {e}[/red]")
-        raise typer.Exit(1)
+        out.print(f"[red]Error: {e}[/red]")
+        sys.exit(ExitCode.GENERAL_ERROR)
 
 
 @app.command(name="config-import-merge")
 def config_import_merge(
-    input_path: Annotated[str, typer.Argument(help="Path to configuration file to import")]
+    input_path: Annotated[str, typer.Argument(help="Path to configuration file to import")],
 ) -> None:
-    """Import configuration with merge (keeps existing rules, adds new ones)."""
-    console.print(f"\n[bold]Importing configuration from {input_path} (merge mode)...[/bold]\n")
+    """
+    Import configuration with merge (keeps existing rules, adds new ones).
+
+    Examples:
+        # Merge configuration (keeps existing rules)
+        fileflow config-import-merge ~/backup/config.toml
+    """
+    out = OutputFormat()
+
+    out.print(f"\n[bold]Importing configuration from {input_path} (merge mode)...[/bold]\n")
 
     try:
         config_mgr = get_config_manager()
         config_mgr.import_config(input_path, merge=True)
-
-        console.print(f"[green]✓ Configuration merged successfully[/green]\n")
-
+        out.print("[green]✓ Configuration merged successfully[/green]\n")
+        sys.exit(ExitCode.SUCCESS)
+    except FileNotFoundError:
+        out.print(f"[red]Error: File not found: {input_path}[/red]")
+        sys.exit(ExitCode.FILE_NOT_FOUND)
     except Exception as e:
-        console.print(f"[red]Error: {e}[/red]")
-        raise typer.Exit(1)
+        out.print(f"[red]Error: {e}[/red]")
+        sys.exit(ExitCode.GENERAL_ERROR)
 
 
 @app.command(name="config-validate")
 def config_validate(
-    config_path: Annotated[Optional[str], typer.Argument(help="Path to configuration file (optional, validates default if not provided)")] = None
+    config_path: Annotated[
+        str | None,
+        typer.Argument(help="Path to configuration file (optional, validates default if not provided)")
+    ] = None,
 ) -> None:
-    """Validate configuration file (T122)."""
+    """
+    Validate configuration file.
+
+    Examples:
+        # Validate default configuration
+        fileflow config-validate
+
+        # Validate specific configuration file
+        fileflow config-validate ~/custom/config.toml
+    """
+    out = OutputFormat()
+
     if config_path:
-        console.print(f"\n[bold]Validating configuration at {config_path}...[/bold]\n")
+        out.print(f"\n[bold]Validating configuration at {config_path}...[/bold]\n")
         config_mgr = ConfigManager(config_path)
     else:
-        console.print("\n[bold]Validating default configuration...[/bold]\n")
+        out.print("\n[bold]Validating default configuration...[/bold]\n")
         config_mgr = get_config_manager()
 
     try:
         valid, error_msg = config_mgr.validate()
 
         if valid:
-            console.print("[green]✓ Configuration is valid[/green]\n")
+            out.print("[green]✓ Configuration is valid[/green]\n")
+            sys.exit(ExitCode.SUCCESS)
         else:
-            console.print(f"[red]✗ Configuration is invalid: {error_msg}[/red]\n")
-            raise typer.Exit(1)
+            out.print(f"[red]✗ Configuration is invalid: {error_msg}[/red]\n")
+            sys.exit(ExitCode.CONFIG_ERROR)
 
+    except FileNotFoundError:
+        out.print(f"[red]Error: Configuration file not found: {config_path}[/red]")
+        sys.exit(ExitCode.FILE_NOT_FOUND)
     except Exception as e:
-        console.print(f"[red]Error: {e}[/red]")
-        raise typer.Exit(1)
+        out.print(f"[red]Error: {e}[/red]")
+        sys.exit(ExitCode.CONFIG_ERROR)
 
 
 @app.command(name="config-edit")
 def config_edit() -> None:
-    """Open configuration file in default editor (T123)."""
+    """
+    Open configuration file in default editor.
+
+    Examples:
+        # Edit configuration file
+        fileflow config-edit
+    """
     import os
     import shutil
 
+    out = OutputFormat()
     config_path = DEFAULT_CONFIG_PATH
 
     if not config_path.exists():
-        console.print("[yellow]Configuration file does not exist. Creating default configuration...[/yellow]")
+        out.print("[yellow]Configuration file does not exist. Creating default configuration...[/yellow]")
         create_default_config_file(str(config_path))
 
     # Determine editor
@@ -739,15 +1217,15 @@ def config_edit() -> None:
                 break
 
     if not editor:
-        console.print(f"[red]No editor found. Please set the EDITOR environment variable.[/red]")
-        console.print(f"\nConfiguration file location: [cyan]{config_path}[/cyan]")
-        console.print(f"\nYou can edit it manually or set EDITOR:")
-        console.print(f"  export EDITOR=nano")
-        console.print(f"  export EDITOR=vim")
-        raise typer.Exit(1)
+        out.print("[red]No editor found. Please set the EDITOR environment variable.[/red]")
+        out.print(f"\nConfiguration file location: [cyan]{config_path}[/cyan]")
+        out.print("\nYou can edit it manually or set EDITOR:")
+        out.print("  export EDITOR=nano")
+        out.print("  export EDITOR=vim")
+        sys.exit(ExitCode.CONFIG_ERROR)
 
-    console.print(f"[bold]Opening configuration in {editor}...[/bold]\n")
-    console.print(f"File: [cyan]{config_path}[/cyan]\n")
+    out.print(f"[bold]Opening configuration in {editor}...[/bold]\n")
+    out.print(f"File: [cyan]{config_path}[/cyan]\n")
 
     try:
         # Open editor
@@ -755,37 +1233,59 @@ def config_edit() -> None:
 
         if result.returncode == 0:
             # Validate configuration after editing
-            console.print("\n[bold]Validating edited configuration...[/bold]")
+            out.print("\n[bold]Validating edited configuration...[/bold]")
             config_mgr = ConfigManager(config_path)
             valid, error_msg = config_mgr.validate()
 
             if valid:
-                console.print("[green]✓ Configuration is valid[/green]\n")
+                out.print("[green]✓ Configuration is valid[/green]\n")
+                sys.exit(ExitCode.SUCCESS)
             else:
-                console.print(f"[yellow]⚠ Warning: Configuration has errors: {error_msg}[/yellow]")
-                console.print(f"[yellow]  Fix the errors and run: fileflow config-validate[/yellow]\n")
+                out.print(f"[yellow]⚠ Warning: Configuration has errors: {error_msg}[/yellow]")
+                out.print("[yellow]  Fix the errors and run: fileflow config-validate[/yellow]\n")
+                sys.exit(ExitCode.CONFIG_ERROR)
         else:
-            console.print(f"[yellow]Editor exited with code {result.returncode}[/yellow]\n")
+            out.print(f"[yellow]Editor exited with code {result.returncode}[/yellow]\n")
+            sys.exit(ExitCode.GENERAL_ERROR)
 
     except FileNotFoundError:
-        console.print(f"[red]Editor '{editor}' not found[/red]")
-        raise typer.Exit(1)
+        out.print(f"[red]Editor '{editor}' not found[/red]")
+        sys.exit(ExitCode.FILE_NOT_FOUND)
     except Exception as e:
-        console.print(f"[red]Error opening editor: {e}[/red]")
-        raise typer.Exit(1)
+        out.print(f"[red]Error opening editor: {e}[/red]")
+        sys.exit(ExitCode.GENERAL_ERROR)
 
 
 @app.command(name="config-reset")
 def config_reset(
-    force: Annotated[bool, typer.Option("--force", help="Skip confirmation prompt")] = False,
-    keep_rules: Annotated[bool, typer.Option("--keep-rules", help="Keep existing rules, reset only settings")] = False
+    force: Annotated[
+        bool,
+        typer.Option("--force", help="Skip confirmation prompt")
+    ] = False,
+    keep_rules: Annotated[
+        bool,
+        typer.Option("--keep-rules", help="Keep existing rules, reset only settings")
+    ] = False,
 ) -> None:
-    """Reset configuration to defaults (T124)."""
+    """
+    Reset configuration to defaults.
+
+    Examples:
+        # Reset configuration (with confirmation)
+        fileflow config-reset
+
+        # Reset without confirmation
+        fileflow config-reset --force
+
+        # Reset but keep custom rules
+        fileflow config-reset --keep-rules
+    """
+    out = OutputFormat()
     config_path = DEFAULT_CONFIG_PATH
 
     if not config_path.exists():
-        console.print("[yellow]Configuration file does not exist.[/yellow]\n")
-        return
+        out.print("[yellow]Configuration file does not exist.[/yellow]\n")
+        sys.exit(ExitCode.SUCCESS)
 
     # Load current config to backup rules if needed
     current_rules = []
@@ -795,24 +1295,16 @@ def config_reset(
             config = config_mgr.load()
             current_rules = config.rules
         except Exception:
-            console.print("[yellow]Warning: Could not load current rules[/yellow]")
+            out.print("[yellow]Warning: Could not load current rules[/yellow]")
 
     # Confirmation
     if not force:
-        console.print("\n[bold red]⚠ Warning: This will reset your configuration![/bold red]\n")
-        if keep_rules:
-            console.print("  • Settings will be reset to defaults")
-            console.print("  • Custom rules will be preserved")
-        else:
-            console.print("  • All settings will be reset to defaults")
-            console.print("  • All custom rules will be deleted")
-
-        console.print(f"\nConfiguration file: [cyan]{config_path}[/cyan]\n")
-
-        confirm = typer.confirm("Are you sure you want to continue?")
-        if not confirm:
-            console.print("\n[yellow]Reset cancelled[/yellow]\n")
-            raise typer.Exit(0)
+        if not confirm_action(
+            "This will reset your configuration. Continue?",
+            default=False
+        ):
+            out.print("\n[yellow]Reset cancelled[/yellow]\n")
+            sys.exit(ExitCode.OPERATION_CANCELLED)
 
     try:
         # Create backup
@@ -821,11 +1313,11 @@ def config_reset(
 
         backup_path = config_path.parent / f"fileflow.toml.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         shutil.copy(config_path, backup_path)
-        console.print(f"\n[green]✓ Backup created: {backup_path}[/green]")
+        out.print(f"\n[green]✓ Backup created: {backup_path}[/green]")
 
         # Reset configuration
         create_default_config_file(str(config_path))
-        console.print(f"[green]✓ Configuration reset to defaults[/green]")
+        out.print("[green]✓ Configuration reset to defaults[/green]")
 
         # Restore rules if requested
         if keep_rules and current_rules:
@@ -833,23 +1325,41 @@ def config_reset(
             config = config_mgr.load()
             config.rules = current_rules
             config_mgr.save(config)
-            console.print(f"[green]✓ Restored {len(current_rules)} custom rules[/green]")
+            out.print(f"[green]✓ Restored {len(current_rules)} custom rules[/green]")
 
-        console.print("\n[bold]Configuration has been reset![/bold]\n")
+        out.print("\n[bold]Configuration has been reset![/bold]\n")
+        sys.exit(ExitCode.SUCCESS)
 
     except Exception as e:
-        console.print(f"[red]Error resetting configuration: {e}[/red]")
-        raise typer.Exit(1)
+        out.print(f"[red]Error resetting configuration: {e}[/red]")
+        sys.exit(ExitCode.GENERAL_ERROR)
 
 
 @app.command(name="history")
 def history(
-    limit: Annotated[int, typer.Option("--limit", "-n", help="Maximum number of operations to show")] = 100,
-    operation_type: Annotated[Optional[str], typer.Option("--operation-type", "-t", help="Filter by operation type (move, delete, skip)")] = None,
-    rule_id: Annotated[Optional[str], typer.Option("--rule-id", "-r", help="Filter by rule ID")] = None,
-    include_dry_runs: Annotated[bool, typer.Option("--include-dry-runs", "-d", help="Include dry-run operations")] = False,
+    limit: Annotated[
+        int,
+        typer.Option("--limit", "-n", help="Maximum number of operations to show")
+    ] = 100,
+    operation_type: Annotated[
+        str | None,
+        typer.Option("--operation-type", "-t", help="Filter by operation type (move, delete, skip)")
+    ] = None,
+    rule_id: Annotated[
+        str | None,
+        typer.Option("--rule-id", "-r", help="Filter by rule ID")
+    ] = None,
+    include_dry_runs: Annotated[
+        bool,
+        typer.Option("--include-dry-runs", "-d", help="Include dry-run operations")
+    ] = False,
+    output_format: Annotated[
+        str,
+        typer.Option("--output", "-o", help="Output format (table, json)")
+    ] = "table",
 ) -> None:
-    """Show operation history with optional filtering (T149).
+    """
+    Show operation history with optional filtering.
 
     View past file operations including moves, deletions, and skipped files.
     Filter by operation type, rule, and optionally include dry-run operations.
@@ -866,7 +1376,12 @@ def history(
 
         # Include dry-run operations
         fileflow history --include-dry-runs
+
+        # Output as JSON
+        fileflow history --output json
     """
+    out = OutputFormat()
+
     try:
         # Parse operation type if provided
         op_type = None
@@ -874,9 +1389,18 @@ def history(
             try:
                 op_type = OperationType(operation_type.lower())
             except ValueError:
-                console.print(f"[red]Error: Invalid operation type '{operation_type}'[/red]")
-                console.print("[yellow]Valid types: move, delete, skip[/yellow]")
-                raise typer.Exit(1)
+                if output_format == "json":
+                    JSONOutput.print(
+                        JSONOutput.error(
+                            f"Invalid operation type '{operation_type}'",
+                            code=ExitCode.INVALID_USAGE,
+                            details={"valid_types": ["move", "delete", "skip"]},
+                        )
+                    )
+                else:
+                    out.print(f"[red]Error: Invalid operation type '{operation_type}'[/red]")
+                    out.print("[yellow]Valid types: move, delete, skip[/yellow]")
+                sys.exit(ExitCode.INVALID_USAGE)
 
         # Get history from database
         db = Database(DEFAULT_DB_PATH)
@@ -887,14 +1411,60 @@ def history(
             include_dry_runs=include_dry_runs,
         )
 
+        # Calculate statistics
+        total_size = sum(op.file_size for op in operations if op.file_size and op.success and not op.dry_run)
+        successful = sum(1 for op in operations if op.success and not op.dry_run)
+        failed = sum(1 for op in operations if not op.success and not op.dry_run)
+        dry_runs = sum(1 for op in operations if op.dry_run)
+
+        # Handle JSON output
+        if output_format == "json":
+            operations_data = [
+                {
+                    "timestamp": op.timestamp.isoformat() if op.timestamp else None,
+                    "operation_type": op.operation_type.value,
+                    "source_path": op.source_path,
+                    "destination_path": op.destination_path,
+                    "rule_id": op.rule_id,
+                    "file_size": op.file_size,
+                    "success": op.success,
+                    "dry_run": op.dry_run,
+                }
+                for op in operations
+            ]
+
+            JSONOutput.print(
+                JSONOutput.success(
+                    data=operations_data,
+                    metadata={
+                        "total_operations": len(operations),
+                        "successful": successful,
+                        "failed": failed,
+                        "dry_runs": dry_runs,
+                        "total_size_bytes": total_size,
+                        "filters": {
+                            "limit": limit,
+                            "operation_type": operation_type,
+                            "rule_id": rule_id,
+                            "include_dry_runs": include_dry_runs,
+                        },
+                    },
+                    message=f"Found {len(operations)} operations" if operations else "No operations found matching the criteria",
+                )
+            )
+            sys.exit(ExitCode.SUCCESS)
+
+        # Table output (default)
         if not operations:
-            console.print("[yellow]No operations found matching the criteria.[/yellow]")
+            out.print("[yellow]No operations found matching the criteria.[/yellow]")
             if not include_dry_runs:
-                console.print("[dim]Tip: Use --include-dry-runs to see dry-run operations[/dim]")
-            return
+                out.print("[dim]Tip: Use --include-dry-runs to see dry-run operations[/dim]")
+            sys.exit(ExitCode.SUCCESS)
 
         # Build table
-        table = Table(title=f"Operation History (showing {len(operations)} of {len(operations)})")
+        from rich.table import Table
+
+        table = Table(title=f"Operation History (showing {len(operations)})")
         table.add_column("Date/Time", style="cyan", no_wrap=True)
         table.add_column("Operation", style="magenta")
         table.add_column("Source", style="blue")
@@ -921,17 +1491,7 @@ def history(
             destination = str(Path(op.destination_path).name) if op.destination_path else "-"
 
             # Format file size
-            if op.file_size:
-                if op.file_size < 1024:
-                    size = f"{op.file_size}B"
-                elif op.file_size < 1024 * 1024:
-                    size = f"{op.file_size / 1024:.1f}KB"
-                elif op.file_size < 1024 * 1024 * 1024:
-                    size = f"{op.file_size / (1024 * 1024):.1f}MB"
-                else:
-                    size = f"{op.file_size / (1024 * 1024 * 1024):.2f}GB"
-            else:
-                size = "-"
+            size = format_file_size(op.file_size) if op.file_size else "-"
 
             # Format status
             if op.dry_run:
@@ -954,36 +1514,31 @@ def history(
                 status,
             )
 
-        console.print(table)
+        out.console.print(table)
 
         # Summary statistics
-        total_size = sum(op.file_size for op in operations if op.file_size and op.success and not op.dry_run)
-        successful = sum(1 for op in operations if op.success and not op.dry_run)
-        failed = sum(1 for op in operations if not op.success and not op.dry_run)
-        dry_runs = sum(1 for op in operations if op.dry_run)
-
-        console.print(f"\n[bold]Summary:[/bold]")
-        console.print(f"  Total operations: {len(operations)}")
-        console.print(f"  Successful: {successful}")
+        out.print("\n[bold]Summary:[/bold]")
+        out.print(f"  Total operations: {len(operations)}")
+        out.print(f"  Successful: {successful}")
         if failed > 0:
-            console.print(f"  Failed: {failed}")
+            out.print(f"  Failed: {failed}")
         if dry_runs > 0:
-            console.print(f"  Dry-runs: {dry_runs}")
+            out.print(f"  Dry-runs: {dry_runs}")
 
         if total_size > 0:
-            if total_size < 1024 * 1024:
-                size_str = f"{total_size / 1024:.1f}KB"
-            elif total_size < 1024 * 1024 * 1024:
-                size_str = f"{total_size / (1024 * 1024):.1f}MB"
-            else:
-                size_str = f"{total_size / (1024 * 1024 * 1024):.2f}GB"
-            console.print(f"  Total data processed: {size_str}")
+            out.print(f"  Total data processed: {format_file_size(total_size)}")
 
-        console.print()
+        out.print()
+        sys.exit(ExitCode.SUCCESS)
 
     except Exception as e:
-        console.print(f"[red]Error retrieving history: {e}[/red]")
-        raise typer.Exit(1)
+        if output_format == "json":
+            JSONOutput.print(
+                JSONOutput.error(f"Error retrieving history: {e}", code=ExitCode.DATABASE_ERROR)
+            )
+        else:
+            out.print(f"[red]Error retrieving history: {e}[/red]")
+        sys.exit(ExitCode.DATABASE_ERROR)
 
 
 @app.command(name="system-status")
@@ -1016,7 +1571,7 @@ def system_status() -> None:
         try:
             db = Database(DEFAULT_DB_PATH)
             # Test database connectivity
-            history = db.get_operation_history(limit=1)
+            db.get_operation_history(limit=1)
             console.print("[green]✓[/green] Database: Connected")
             console.print(f"  Location: {DEFAULT_DB_PATH}")
             console.print(f"  Size: {DEFAULT_DB_PATH.stat().st_size / 1024:.1f} KB" if DEFAULT_DB_PATH.exists() else "  Size: N/A")
@@ -1025,7 +1580,8 @@ def system_status() -> None:
 
         # Check cache
         try:
-            cache = ChecksumCache(DEFAULT_DB_PATH)
+            db = get_database()
+            ChecksumCache(db)
             # Get cache stats (this would need to be implemented in cache.py)
             console.print("[green]✓[/green] Cache: Enabled")
         except Exception as e:
@@ -1079,7 +1635,7 @@ def system_status() -> None:
         except Exception as e:
             console.print(f"  [yellow]Could not retrieve statistics: {e}[/yellow]")
 
-        console.print(f"\n[green]System is operational[/green]\n")
+        console.print("\n[green]System is operational[/green]\n")
 
     except Exception as e:
         console.print(f"\n[red]Error checking system status: {e}[/red]")
@@ -1106,22 +1662,22 @@ def clear_cache(
 
         console.print("\n[bold]Clearing cache...[/bold]\n")
 
-        # Clear checksum cache
+        # Clear checksum cache using proper database API
         db = Database(DEFAULT_DB_PATH)
-        cursor = db.conn.cursor()
 
-        # Get cache size before clearing
-        cursor.execute("SELECT COUNT(*) FROM checksum_cache")
-        cache_count = cursor.fetchone()[0]
+        # Get stats before clearing
+        stats = db.get_stats()
+        cache_count = stats["cache_count"]
 
         # Clear cache
-        cursor.execute("DELETE FROM checksum_cache")
-        db.conn.commit()
+        db.clear_cache()
 
         console.print(f"[green]✓[/green] Cleared {cache_count} cached checksums")
 
-        # Vacuum database
-        cursor.execute("VACUUM")
+        # Vacuum database using connection pool
+        with db.pool.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("VACUUM")
         console.print("[green]✓[/green] Optimized database")
 
         # Show new database size
@@ -1167,10 +1723,11 @@ def find_duplicates(
         console.print(f"\n[bold]Scanning for duplicates in {len(monitored_dirs)} directories...[/bold]\n")
 
         # Scan all files and compute checksums
-        from fileflow_core.file_scanner import FileScanner
         from collections import defaultdict
 
-        scanner = FileScanner()
+        from fileflow_core.file_scanner import FileScanner
+
+        FileScanner()
         checksum_to_files = defaultdict(list)
 
         for directory in monitored_dirs:
@@ -1207,7 +1764,7 @@ def find_duplicates(
         total_duplicate_size = 0
         total_duplicate_count = 0
 
-        for checksum, files in duplicates.items():
+        for _, files in duplicates.items():
             # Keep one, rest are duplicates
             file_size = files[0].stat().st_size
             duplicate_count = len(files) - 1
@@ -1227,7 +1784,7 @@ def find_duplicates(
 
         files_to_delete = []
 
-        for idx, (checksum, files) in enumerate(sorted(duplicates.items(), key=lambda x: len(x[1]), reverse=True), 1):
+        for idx, (_, files) in enumerate(sorted(duplicates.items(), key=lambda x: len(x[1]), reverse=True), 1):
             file_size = files[0].stat().st_size
             size_str = f"{file_size / (1024 * 1024):.2f} MB" if file_size > 1024 * 1024 else f"{file_size / 1024:.1f} KB"
 
@@ -1286,7 +1843,7 @@ def find_duplicates(
             deleted_count = 0
             space_freed = 0
 
-            for idx, (checksum, files) in enumerate(sorted(duplicates.items(), key=lambda x: len(x[1]), reverse=True), 1):
+            for idx, (_, files) in enumerate(sorted(duplicates.items(), key=lambda x: len(x[1]), reverse=True), 1):
                 sorted_files = sorted(files, key=lambda f: f.stat().st_mtime)
 
                 console.print(f"\n[bold]Set {idx} of {len(duplicates)}:[/bold]")
@@ -1307,7 +1864,7 @@ def find_duplicates(
 
                 # Parse choices
                 try:
-                    to_delete = []
+                    to_delete: list[int] = []
                     for part in choice.split(","):
                         part = part.strip()
                         if "-" in part:
@@ -1409,7 +1966,6 @@ def generate_completion(
 
     # Generate and print completion script
     # Typer uses click underneath, so we can access the click completion
-    import click
     from click.shell_completion import get_completion_class
 
     # Get the click command from the Typer app

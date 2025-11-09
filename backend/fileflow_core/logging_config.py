@@ -7,13 +7,12 @@ Provides structured logging with file and console output.
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
 
 
 def setup_logging(
     log_level: str = "INFO",
-    log_file: Optional[Path] = None,
-    format_string: Optional[str] = None,
+    log_file: Path | None = None,
+    format_string: str | None = None,
 ) -> logging.Logger:
     """
     Setup logging configuration for FileFlow.

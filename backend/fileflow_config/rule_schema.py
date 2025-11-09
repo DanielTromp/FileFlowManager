@@ -7,7 +7,6 @@ Additional validation logic beyond Pydantic's built-in validation.
 import os
 import re
 from pathlib import Path
-from typing import List, Tuple
 
 from fileflow_core.models import Rule
 
@@ -16,7 +15,7 @@ class RuleValidator:
     """Validate rule configuration."""
 
     @staticmethod
-    def validate_glob_pattern(pattern: str) -> Tuple[bool, str]:
+    def validate_glob_pattern(pattern: str) -> tuple[bool, str]:
         """Validate a glob pattern."""
         # Check for valid glob syntax
         invalid_chars = ["<", ">", "|", "\0"]
@@ -31,7 +30,7 @@ class RuleValidator:
         return True, ""
 
     @staticmethod
-    def validate_file_type(file_type: str) -> Tuple[bool, str]:
+    def validate_file_type(file_type: str) -> tuple[bool, str]:
         """Validate a file type extension."""
         # Remove leading dot if present
         file_type = file_type.lstrip(".")
@@ -47,7 +46,7 @@ class RuleValidator:
         return True, ""
 
     @staticmethod
-    def validate_directory(directory: str, expand_vars: bool = True) -> Tuple[bool, str]:
+    def validate_directory(directory: str, expand_vars: bool = True) -> tuple[bool, str]:
         """Validate a directory path."""
         # Allow environment variables
         if directory.startswith("${"):
@@ -75,7 +74,7 @@ class RuleValidator:
         return True, ""
 
     @staticmethod
-    def validate_destination(destination: str, check_writable: bool = True) -> Tuple[bool, str]:
+    def validate_destination(destination: str, check_writable: bool = True) -> tuple[bool, str]:
         """Validate destination path."""
         # Allow environment variables
         if destination.startswith("${"):
@@ -108,7 +107,7 @@ class RuleValidator:
         return True, ""
 
     @classmethod
-    def validate_rule(cls, rule: Rule, check_filesystem: bool = True) -> Tuple[bool, List[str]]:
+    def validate_rule(cls, rule: Rule, check_filesystem: bool = True) -> tuple[bool, list[str]]:
         """Validate entire rule configuration."""
         errors = []
 

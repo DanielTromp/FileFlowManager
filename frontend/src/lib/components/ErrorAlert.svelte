@@ -23,8 +23,7 @@
     },
     PERMISSION_DENIED: {
       title: "Permission Denied",
-      action:
-        "Grant read/write permissions to FileFlow or run with administrator privileges",
+      action: "Grant read/write permissions to FileFlow or run with administrator privileges",
     },
     CONFIG_INVALID: {
       title: "Configuration Error",
