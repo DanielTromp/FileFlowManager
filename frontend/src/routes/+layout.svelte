@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { Writable } from 'svelte/store';
-  import { initializeTheme } from '../lib/stores/theme';
-  import ThemeToggle from '../lib/components/ThemeToggle.svelte';
-  import { initializeNotifications } from '../lib/notifications';
+  import { initializeTheme } from '$lib/stores/theme';
+  import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+  import { initializeNotifications } from '$lib/notifications';
   import { open } from '@tauri-apps/api/shell';
 
   export let currentRoute: Writable<string>;

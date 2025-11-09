@@ -1,13 +1,13 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { scanFiles, getOperationHistory } from '../lib/api';
-  import { scanStore, scanActions } from '../lib/stores/scan';
-  import ProgressBar from '../lib/components/ProgressBar.svelte';
-  import ConfirmDialog from '../lib/components/ConfirmDialog.svelte';
-  import KeyboardShortcutsHelp from '../lib/components/KeyboardShortcutsHelp.svelte';
-  import { registerShortcuts, type ShortcutGroup } from '../lib/keyboardShortcuts';
-  import { notifyScanComplete, notifyExecutionComplete } from '../lib/notifications';
-  import { formatDateTime } from '../lib/utils/dateFormat';
+  import { scanFiles, getOperationHistory } from '$lib/api';
+  import { scanStore, scanActions } from '$lib/stores/scan';
+  import ProgressBar from '$lib/components/ProgressBar.svelte';
+  import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+  import KeyboardShortcutsHelp from '$lib/components/KeyboardShortcutsHelp.svelte';
+  import { registerShortcuts, type ShortcutGroup } from '$lib/keyboardShortcuts';
+  import { notifyScanComplete, notifyExecutionComplete } from '$lib/notifications';
+  import { formatDateTime } from '$lib/utils/dateFormat';
 
   let showConfirmExecute = false;
   let showShortcutsHelp = false;

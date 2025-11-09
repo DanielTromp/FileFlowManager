@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { open, save } from '@tauri-apps/api/dialog';
-  import { exportConfiguration, importConfiguration, getConfiguration } from '../lib/api';
-  import type { Configuration } from '../lib/types';
+  import { exportConfiguration, importConfiguration, getConfiguration } from '$lib/api';
+  import type { Configuration } from '$lib/types';
 
   // State
   let config: Configuration | null = null;

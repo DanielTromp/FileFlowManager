@@ -1,10 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { ask } from '@tauri-apps/api/dialog';
-  import { toggleRule as apiToggleRule, deleteRule as apiDeleteRule } from '../lib/api';
-  import type { Rule } from '../lib/types';
-  import RuleEditor from '../lib/components/RuleEditor.svelte';
-  import { rulesStore, rulesActions } from '../lib/stores/rules';
+  import { toggleRule as apiToggleRule, deleteRule as apiDeleteRule } from '$lib/api';
+  import type { Rule } from '$lib/types';
+  import RuleEditor from '$lib/components/RuleEditor.svelte';
+  import { rulesStore, rulesActions } from '$lib/stores/rules';
 
   let showEditor = false;
   let editingRule: Rule | null = null;

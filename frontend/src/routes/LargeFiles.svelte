@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getLargeFiles, deleteFiles } from '../lib/api';
-  import type { FileMetadata } from '../lib/types';
+  import { getLargeFiles, deleteFiles } from '$lib/api';
+  import type { FileMetadata } from '$lib/types';
   import { confirm } from '@tauri-apps/api/dialog';
-  import { notifyDeletionComplete } from '../lib/notifications';
+  import { notifyDeletionComplete } from '$lib/notifications';
 
   // State
   let threshold = 100; // MB

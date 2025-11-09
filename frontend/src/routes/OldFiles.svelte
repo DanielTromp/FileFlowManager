@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getOldFiles, deleteFiles } from '../lib/api';
-  import type { FileMetadata } from '../lib/types';
+  import { getOldFiles, deleteFiles } from '$lib/api';
+  import type { FileMetadata } from '$lib/types';
   import { confirm } from '@tauri-apps/api/dialog';
-  import { notifyDeletionComplete } from '../lib/notifications';
+  import { notifyDeletionComplete } from '$lib/notifications';
 
   // State
   let threshold = 365; // days (T108) - default to 1 year for better performance
