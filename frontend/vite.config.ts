@@ -15,6 +15,7 @@ export default defineConfig({
     alias: {
       '$lib': path.resolve('./src/lib'),
     },
+    extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json', '.svelte'],
   },
   build: {
     target: process.env.TAURI_PLATFORM === 'windows' ? 'chrome105' : 'safari13',
