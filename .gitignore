@@ -78,7 +78,7 @@ dist-ssr/
 .svelte-kit/
 
 # pnpm
-pnpm-lock.yaml
+# Note: pnpm-lock.yaml should be committed for reproducible builds
 
 # TypeScript
 *.tsbuildinfo
