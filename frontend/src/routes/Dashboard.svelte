@@ -7,6 +7,7 @@
   import KeyboardShortcutsHelp from '../lib/components/KeyboardShortcutsHelp.svelte';
   import { registerShortcuts, type ShortcutGroup } from '../lib/keyboardShortcuts';
   import { notifyScanComplete, notifyExecutionComplete } from '../lib/notifications';
+  import { formatDateTime } from '../lib/utils/dateFormat';
 
   let showConfirmExecute = false;
   let showShortcutsHelp = false;
@@ -61,7 +62,7 @@
 
   onMount(async () => {
     // Initialize
-    lastScanTime = new Date().toLocaleString();
+    lastScanTime = formatDateTime(new Date());
     await loadOperationHistory();
 
     // Register keyboard shortcuts (T154)
@@ -94,7 +95,7 @@
       const result = await scanFiles({ dry_run: true });
       console.log('Scan result:', result);
       scanActions.completeScan(result);
-      lastScanTime = new Date().toLocaleString();
+      lastScanTime = formatDateTime(new Date());
 
       // Send notification (T158)
       await notifyScanComplete(result.files_matched, result.planned_operations.length);
@@ -153,16 +154,16 @@
   </div>
 
   <!-- Status Cards -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-    <div class="stats shadow">
+  <div class="flex flex-col md:flex-row gap-4">
+    <div class="stats shadow md:w-[40%]">
       <div class="stat">
         <div class="stat-title">Last Scan</div>
-        <div class="stat-value text-2xl">{lastScanTime || 'Never'}</div>
+        <div class="stat-value text-xl">{lastScanTime || 'Never'}</div>
         <div class="stat-desc">Most recent scan time</div>
       </div>
     </div>
 
-    <div class="stats shadow">
+    <div class="stats shadow md:w-[30%]">
       <div class="stat">
         <div class="stat-title">Active Rules</div>
         <div class="stat-value text-2xl">{activeRuleCount}</div>
@@ -170,7 +171,7 @@
       </div>
     </div>
 
-    <div class="stats shadow">
+    <div class="stats shadow md:w-[30%]">
       <div class="stat">
         <div class="stat-title">Files Matched</div>
         <div class="stat-value text-2xl">
@@ -192,7 +193,12 @@
           on:click={handleDryRunScan}
           disabled={isScanning}
         >
-          {isScanning ? 'Scanning...' : 'Scan Now'}
+          {#if isScanning}
+            <span class="loading loading-spinner loading-sm"></span>
+            Scanning...
+          {:else}
+            Scan Now
+          {/if}
         </button>
 
         <button
@@ -292,21 +298,25 @@
     <div class="card-body">
       <div class="flex justify-between items-center mb-2">
         <h2 class="card-title">Recent Operations</h2>
-        <button class="btn btn-sm btn-ghost" on:click={loadOperationHistory}>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-4 w-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
-          </svg>
+        <button class="btn btn-sm btn-ghost" on:click={loadOperationHistory} disabled={loadingHistory}>
+          {#if loadingHistory}
+            <span class="loading loading-spinner loading-xs"></span>
+          {:else}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+          {/if}
           Refresh
         </button>
       </div>
@@ -336,7 +346,7 @@
               {#each operationHistory as operation}
                 <tr>
                   <td class="text-xs">
-                    {new Date(operation.timestamp).toLocaleString()}
+                    {formatDateTime(operation.timestamp)}
                   </td>
                   <td>
                     <span

@@ -2,207 +2,25 @@
 
 **Intelligent automated file organization system for macOS**
 
-Version: 0.9.0 (Beta)
-Status: Development - Phase 7 Complete (All User Stories), Phase 8 in Progress (Polish)
+Version: 0.1.0
+Status: Beta - Core features complete, polishing in progress
 
 ## Overview
 
-Started as a Spec Kit https://github.com/github/spec-kit test and worked like a charm, now available for Mac.
 FileFlow Manager is an intelligent, automated file organization system for macOS that helps you keep your files organized using extensible rule-based management. It automatically organizes screenshots by date, allows custom organization rules for any file type, identifies large and old files for cleanup, and supports configuration import/export for portability across machines.
 
 **Key Features:**
-- Automated screenshot organization with date-based folder structure (YYYY/MM/DD)
-- Extensible custom rule engine for organizing any file type
-- Duplicate file detection using SHA-256 checksums
-- Large file discovery and cleanup (configurable threshold)
-- Old file discovery and cleanup (configurable age threshold)
-- Configuration import/export for easy setup on new machines
-- Both CLI and native macOS GUI interfaces
-- Dry-run mode for safe preview before execution
-- Complete operation history tracking
-
-## Features Implemented
-
-### ✅ Phase 1: Setup (Complete)
-- Project structure initialized
-- Python backend with Poetry dependency management
-- Tauri + Svelte frontend with pnpm
-- Development tooling (Black, Ruff, ESLint, Prettier)
-- Comprehensive .gitignore for multi-language project
-
-### ✅ Phase 2: Foundational Infrastructure (Complete)
-
-**Backend Foundation**:
-- Pydantic data models with full validation
-- SQLite database with operations tracking and checksum cache
-- TOML configuration management with environment variable expansion
-- Rule validation and schema
-- SHA-256 checksum caching for performance
-- Parallel file scanning with ThreadPoolExecutor
-- Atomic file operations (move, delete) with metadata preservation
-- Structured logging and custom exceptions
-- Database migrations framework
-
-**Frontend Foundation**:
-- Tauri IPC bridge (Rust)
-- TypeScript type definitions matching backend models
-- API wrapper functions for all Tauri commands
-- Svelte stores for state management (scan, rules, files, settings)
-- Reusable UI components (ProgressBar, ConfirmDialog, FileList)
-- Tailwind CSS + daisyUI styling
-- Base layout with navigation
-
-### ✅ Phase 3-7: All User Stories Complete
-
-**User Story 1 - Screenshot Organization**:
-- Screenshot pattern detection and date extraction
-- Date-based folder organization (YYYY/MM/DD)
-- Duplicate detection using SHA-256 checksums
-- Default screenshot organization rule
-- CLI: `fileflow scan`, `fileflow detect-screenshots`
-- GUI: Dashboard with scan/execute buttons
-
-**User Story 2 - Custom Rule Creation**:
-- Full rule CRUD operations (create, read, update, delete)
-- Rule validation and priority management
-- GUI rule editor with all configurable options
-- Enable/disable rules without deleting
-- CLI: `fileflow rules list`, `fileflow rules show <id>`, `fileflow rules create`, `fileflow rules update`, `fileflow rules delete`, `fileflow rules enable/disable`
-- GUI: Complete Rules tab with rule editor dialog
-
-**User Story 3 - Large File Cleanup**:
-- Configurable size threshold (default 100MB)
-- Scan across all monitored directories
-- Sort by size, filter by location
-- Batch delete with confirmation and space estimate
-- CLI: `fileflow files large`, `fileflow files delete`
-- GUI: Large Files tab with filtering and batch actions
-
-**User Story 4 - Old File Cleanup**:
-- Configurable age threshold (default 90 days)
-- Scan based on modification date
-- Sort by age, filter by type
-- Batch delete with confirmation
-- CLI: `fileflow files old`, `fileflow files delete`
-- GUI: Old Files tab with filtering and batch actions
-
-**User Story 5 - Configuration Portability**:
-- Export configuration to any location
-- Import with merge or replace strategies
-- Environment variable expansion (${HOME}, ${DESKTOP}, etc.)
-- Configuration validation and error reporting
-- CLI: `fileflow config-show`, `fileflow config-export`, `fileflow config-import`, `fileflow config-import-merge`, `fileflow config-validate`, `fileflow config-edit`, `fileflow config-reset`
-- GUI: Settings tab with export/import/preview
-
-## Project Structure
-
-```
-.
-├── backend/                      # Python backend
-│   ├── fileflow_core/           # Core file operations
-│   │   ├── models.py            # Pydantic data models
-│   │   ├── file_scanner.py      # Directory scanning
-│   │   ├── file_operations.py   # Atomic file ops
-│   │   ├── duplicate_detector.py # Duplicate detection
-│   │   ├── date_organizer.py    # Date-based organization
-│   │   ├── rule_engine.py       # Rule processing
-│   │   ├── logging_config.py    # Logging setup
-│   │   └── exceptions.py        # Custom exceptions
-│   ├── fileflow_config/         # Configuration
-│   │   ├── config_manager.py    # TOML config management
-│   │   ├── rule_schema.py       # Rule validation
-│   │   └── defaults.py          # Default rules
-│   ├── fileflow_storage/        # Persistence
-│   │   ├── database.py          # SQLite operations
-│   │   ├── cache.py             # Checksum cache
-│   │   └── migrations.py        # DB migrations
-│   ├── fileflow_cli/            # CLI interface
-│   │   ├── __main__.py          # Entry point
-│   │   └── commands.py          # Typer commands
-│   └── pyproject.toml           # Poetry config
-│
-├── frontend/                    # Tauri + Svelte frontend
-│   ├── src/
-│   │   ├── routes/
-│   │   │   ├── +layout.svelte   # Base layout
-│   │   │   ├── +page.svelte     # Index
-│   │   │   └── Dashboard.svelte # Main dashboard
-│   │   ├── lib/
-│   │   │   ├── components/      # Reusable components
-│   │   │   ├── stores/          # State management
-│   │   │   ├── api.ts           # Tauri API wrappers
-│   │   │   └── types.ts         # TypeScript types
-│   │   ├── app.css              # Global styles
-│   │   └── app.html             # HTML template
-│   ├── src-tauri/
-│   │   ├── src/main.rs          # Tauri bridge
-│   │   ├── Cargo.toml           # Rust dependencies
-│   │   └── tauri.conf.json      # Tauri config
-│   └── package.json             # Node.js dependencies
-│
-├── specs/001-fileflow-manager/  # Design documents
-│   ├── spec.md                  # Feature specification
-│   ├── plan.md                  # Implementation plan
-│   ├── tasks.md                 # Task breakdown (40/170 complete)
-│   ├── data-model.md            # Data models
-│   ├── contracts/               # API contracts
-│   └── quickstart.md            # Developer guide
-│
-└── README.md                    # This file
-```
-
-## Technology Stack
-
-### Backend
-- **Python 3.10+** with type hints
-- **Poetry** - Dependency management
-- **Typer** - CLI framework
-- **Pydantic v2** - Data validation
-- **SQLite 3** - Database
-- **pytest** - Testing
-
-### Frontend
-- **Tauri 1.5+** - Desktop framework
-- **Svelte 4+** - UI framework
-- **TypeScript 5.0+** - Type safety
-- **Tailwind CSS + daisyUI** - Styling
-- **Vite** - Build tool
-
-### Development Tools
-- **Black, Ruff** - Python formatting/linting
-- **ESLint, Prettier** - TypeScript/Svelte formatting
-- **mypy** - Python type checking
-
-## Current Status
-
-### Completed (136 tasks / 170 total = 80%)
-- ✅ Phase 1: Setup (9/9 tasks)
-- ✅ Phase 2: Foundational (18/18 tasks)
-- ✅ Phase 3: User Story 1 - Screenshot Organization (24/24 tasks, 100%)
-- ✅ Phase 4: User Story 2 - Custom Rule Creation (29/29 tasks, 100%)
-- ✅ Phase 5: User Story 3 - Large File Cleanup (18/18 tasks, 100%)
-- ✅ Phase 6: User Story 4 - Old File Cleanup (16/16 tasks, 100%)
-- ✅ Phase 7: User Story 5 - Configuration Portability (22/22 tasks, 100%)
-- 🔄 Phase 8: Polish & Cross-Cutting Concerns (0/34 tasks, in progress)
-
-### All User Stories: COMPLETE
-- ✅ Screenshot organization with intelligent date-based structure
-- ✅ Custom rule creation with full CRUD operations
-- ✅ Large file discovery and cleanup
-- ✅ Old file discovery and cleanup
-- ✅ Configuration import/export with environment variable support
-- ✅ Full-featured CLI with 20+ commands
-- ✅ Native macOS GUI with 5 tabs (Dashboard, Rules, Large Files, Old Files, Settings)
-- ✅ Complete Tauri IPC bridge connecting GUI to Python backend
-
-### Remaining Work (Phase 8 - Polish)
-- Error handling improvements and comprehensive error messages
-- Performance optimization (caching, parallel processing)
-- System integration (health checks, cache management)
-- CLI enhancements (history, duplicates, shell completion, JSON output)
-- GUI polish (keyboard shortcuts, dark mode, loading states, notifications)
-- Documentation (backend/frontend READMEs, docstrings, CI/CD)
-- Build & distribution (setup scripts, DMG packaging, production testing)
+- 🗂️ Automated screenshot organization with date-based folder structure (DD-MM-YYYY)
+- ⚙️ Extensible custom rule engine for organizing any file type
+- 🔍 Duplicate file detection using SHA-256 checksums
+- 📦 Large file discovery and cleanup (configurable threshold)
+- 🕒 Old file discovery and cleanup (configurable age threshold)
+- 💾 Configuration import/export for easy setup on new machines
+- 🖥️ Native macOS GUI with modern interface (dark mode, loading states, notifications)
+- ⌨️ Full-featured CLI with 20+ commands
+- 👁️ Dry-run mode for safe preview before execution
+- 📊 Complete operation history tracking
+- 🌍 European date/time format (24-hour clock, DD-MM-YYYY)
 
 ## Getting Started
 
@@ -213,12 +31,12 @@ FileFlow Manager is an intelligent, automated file organization system for macOS
 - Rust 1.70+ (for Tauri)
 - pnpm
 
-### Installation
+### Quick Installation
 
 1. **Clone the repository**:
 ```bash
-git clone <repository-url>
-cd fileflow-manager
+git clone https://github.com/DanielTromp/Filefly-specify.git
+cd Filefly-specify
 ```
 
 2. **Install backend dependencies**:
@@ -233,44 +51,9 @@ cd frontend
 pnpm install
 ```
 
-### Development
+### Running the Application
 
-**Run CLI** (production-ready with 20+ commands):
-```bash
-cd backend
-
-# File organization
-poetry run fileflow scan                    # Organize files with dry-run
-poetry run fileflow scan --execute          # Execute file operations
-
-# Rule management
-poetry run fileflow rules list              # List all rules
-poetry run fileflow rules show <id>         # Show rule details
-poetry run fileflow rules create            # Create new rule (interactive)
-poetry run fileflow rules update <id>       # Update rule
-poetry run fileflow rules delete <id>       # Delete rule
-poetry run fileflow rules enable <id>       # Enable rule
-poetry run fileflow rules disable <id>      # Disable rule
-
-# File discovery
-poetry run fileflow files large             # Find large files
-poetry run fileflow files old               # Find old files
-poetry run fileflow files delete <paths...> # Delete files
-
-# Configuration
-poetry run fileflow config-show             # Show current configuration
-poetry run fileflow config-export <path>    # Export configuration
-poetry run fileflow config-import <path>    # Import configuration (replace)
-poetry run fileflow config-import-merge <path>  # Import and merge
-poetry run fileflow config-validate [path]  # Validate configuration
-poetry run fileflow config-edit             # Edit configuration in $EDITOR
-poetry run fileflow config-reset            # Reset to defaults
-
-# Utilities
-poetry run fileflow detect-screenshots      # Detect screenshot location
-```
-
-**Run GUI** (fully functional native macOS app):
+**GUI Application** (Recommended):
 ```bash
 cd frontend
 pnpm tauri dev
@@ -283,14 +66,251 @@ The GUI provides 5 tabs:
 - **Old Files**: Discover and cleanup old files
 - **Settings**: Import/export configuration, view current settings
 
+**CLI Interface**:
+```bash
+cd backend
+
+# File organization
+poetry run fileflow scan                    # Organize files with dry-run
+poetry run fileflow scan --execute          # Execute file operations
+
+# Rule management
+poetry run fileflow rules list              # List all rules
+poetry run fileflow rules create            # Create new rule (interactive)
+
+# File discovery
+poetry run fileflow files large             # Find large files
+poetry run fileflow files old               # Find old files
+
+# Configuration
+poetry run fileflow config-show             # Show current configuration
+poetry run fileflow config-export <path>    # Export configuration
+poetry run fileflow config-import <path>    # Import configuration
+```
+
+See [CLI Commands](#cli-commands) for the full list of available commands.
+
+### Creating Your First Release
+
+Once you're ready to distribute the app:
+
+```bash
+# 1. Update version in package.json and tauri.conf.json
+# 2. Commit the changes
+git add frontend/package.json frontend/src-tauri/tauri.conf.json
+git commit -m "Bump version to 1.0.0"
+
+# 3. Create and push a tag
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+GitHub Actions will automatically:
+- Build the backend executable
+- Create the macOS DMG
+- Publish a GitHub Release with the DMG attached
+
+See [RELEASE.md](RELEASE.md) for detailed release instructions.
+
+## Features
+
+### Automated Screenshot Organization
+- Intelligent screenshot detection based on filename patterns
+- Date extraction from screenshot filenames
+- Organization into YYYY/MM/DD folder structure
+- Duplicate detection using SHA-256 checksums
+- Configurable destination directory
+
+### Custom Organization Rules
+- Full CRUD operations (create, read, update, delete)
+- Rule priorities and enable/disable functionality
+- Pattern matching (glob patterns, file extensions)
+- Age and size filters
+- Exclude patterns for fine-grained control
+- Date-based organization option
+- Duplicate detection per rule
+
+### File Cleanup Tools
+- **Large Files**: Find files above a size threshold (default 100MB)
+- **Old Files**: Find files older than a date threshold (default 365 days)
+- Batch deletion with confirmation
+- Space reclamation estimates
+- File type filtering
+- Pagination for large result sets
+
+### Configuration Management
+- Export configuration to TOML files
+- Import with merge or replace strategies
+- Environment variable expansion (${HOME}, ${DESKTOP}, etc.)
+- Configuration validation and error reporting
+- Easy portability across machines
+
+### Polish & User Experience
+- ✨ Loading spinners on all async operations
+- 🌍 European date/time format (24-hour, DD-MM-YYYY)
+- 🌙 Dark mode support
+- 🔔 Desktop notifications for operations
+- ⌨️ Keyboard shortcuts
+- 📱 Responsive layout (40%-30%-30% dashboard cards)
+- 🆘 Help button linking to documentation
+
+## Technology Stack
+
+### Backend
+- **Python 3.10+** with type hints
+- **Poetry** - Dependency management
+- **Typer** - CLI framework
+- **Pydantic v2** - Data validation
+- **SQLite 3** - Database
+- **PyInstaller** - Executable packaging
+- **pytest** - Testing
+
+### Frontend
+- **Tauri 1.5+** - Desktop framework (Rust)
+- **Svelte 4+** - UI framework
+- **TypeScript 5.0+** - Type safety
+- **Tailwind CSS + daisyUI** - Styling
+- **Vite** - Build tool
+
+### Development & CI/CD
+- **Black, Ruff** - Python formatting/linting
+- **ESLint, Prettier** - TypeScript/Svelte formatting
+- **mypy** - Python type checking
+- **GitHub Actions** - Automated builds and releases
+
+## CLI Commands
+
+### File Operations
+```bash
+fileflow scan                           # Dry-run scan
+fileflow scan --execute                 # Execute operations
+fileflow detect-screenshots             # Detect screenshot location
+```
+
+### Rule Management
+```bash
+fileflow rules list                     # List all rules
+fileflow rules show <id>                # Show rule details
+fileflow rules create                   # Create new rule
+fileflow rules update <id>              # Update rule
+fileflow rules delete <id>              # Delete rule
+fileflow rules enable <id>              # Enable rule
+fileflow rules disable <id>             # Disable rule
+```
+
+### File Discovery
+```bash
+fileflow files large [--threshold MB]   # Find large files
+fileflow files old [--days N]           # Find old files
+fileflow files delete <paths...>        # Delete files
+```
+
+### Configuration
+```bash
+fileflow config-show                    # Show configuration
+fileflow config-export <path>           # Export config
+fileflow config-import <path>           # Import (replace)
+fileflow config-import-merge <path>     # Import (merge)
+fileflow config-validate [path]         # Validate config
+fileflow config-edit                    # Edit in $EDITOR
+fileflow config-reset                   # Reset to defaults
+```
+
+## Project Structure
+
+```
+.
+├── backend/                      # Python backend
+│   ├── fileflow_core/           # Core file operations
+│   ├── fileflow_config/         # Configuration management
+│   ├── fileflow_storage/        # Database & cache
+│   ├── fileflow_cli/            # CLI interface
+│   ├── fileflow_api/            # API server
+│   └── pyproject.toml           # Poetry config
+│
+├── frontend/                    # Tauri + Svelte frontend
+│   ├── src/
+│   │   ├── routes/              # Svelte pages
+│   │   ├── lib/
+│   │   │   ├── components/      # Reusable components
+│   │   │   ├── stores/          # State management
+│   │   │   ├── utils/           # Utilities (date formatting)
+│   │   │   ├── api.ts           # Tauri API wrappers
+│   │   │   └── types.ts         # TypeScript types
+│   │   └── app.css              # Global styles
+│   ├── src-tauri/
+│   │   ├── src/main.rs          # Rust Tauri bridge
+│   │   ├── backend.rs           # Backend integration
+│   │   └── tauri.conf.json      # Tauri config
+│   └── package.json             # Node.js dependencies
+│
+├── .github/workflows/           # CI/CD pipelines
+│   ├── ci.yml                   # Tests & linting
+│   └── release.yml              # Automated releases
+│
+├── specs/                       # Design documents
+│   └── 001-fileflow-manager/
+│
+├── RELEASE.md                   # Release process guide
+└── README.md                    # This file
+```
+
 ## Documentation
 
-- **Specification**: `specs/001-fileflow-manager/spec.md`
+- **Release Process**: [RELEASE.md](RELEASE.md)
+- **Feature Specification**: `specs/001-fileflow-manager/spec.md`
 - **Implementation Plan**: `specs/001-fileflow-manager/plan.md`
 - **Task Breakdown**: `specs/001-fileflow-manager/tasks.md`
-- **Data Models**: `specs/001-fileflow-manager/data-model.md`
-- **API Contracts**: `specs/001-fileflow-manager/contracts/`
 - **Developer Quickstart**: `specs/001-fileflow-manager/quickstart.md`
+
+## Development
+
+### Running Tests
+```bash
+# Backend tests
+cd backend
+poetry run pytest
+
+# Frontend tests
+cd frontend
+pnpm test
+```
+
+### Linting & Formatting
+```bash
+# Backend
+cd backend
+poetry run ruff check .
+poetry run black --check .
+poetry run mypy fileflow_core fileflow_config fileflow_storage
+
+# Frontend
+cd frontend
+pnpm lint
+pnpm format --check
+pnpm type-check
+```
+
+### Building for Production
+```bash
+# Backend executable
+cd backend
+chmod +x build_executable.sh
+./build_executable.sh
+
+# Frontend DMG
+cd frontend
+pnpm tauri build
+```
+
+The DMG will be located at:
+```
+frontend/src-tauri/target/release/bundle/dmg/FileFlow Manager_0.1.0_universal.dmg
+```
+
+## Project Origin
+
+This project started as a test of [Spec Kit](https://github.com/github/spec-kit) and worked like a charm! It's now a fully-featured macOS application for automated file organization.
 
 ## License
 
@@ -298,4 +318,4 @@ TBD
 
 ## Contributing
 
-This project is currently in early development. Contributions will be welcome once the MVP is complete.
+This project is currently in active development. Contributions will be welcome once v1.0 is released.

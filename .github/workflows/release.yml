@@ -1,0 +1,106 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers on tags like v1.0.0, v1.2.3, etc.
+
+permissions:
+  contents: write # Needed to create releases and upload assets
+
+jobs:
+  build-and-release:
+    name: Build and Release DMG
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Setup Python for backend build
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 1.6.1
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      # Build backend executable
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: poetry install --no-interaction
+
+      - name: Install PyInstaller
+        working-directory: ./backend
+        run: poetry add --group dev pyinstaller
+
+      - name: Build backend executable
+        working-directory: ./backend
+        run: |
+          chmod +x build_executable.sh
+          ./build_executable.sh
+
+      - name: Verify backend executable
+        run: |
+          ls -lh backend/dist/
+          file backend/dist/fileflow-backend
+
+      # Setup Node.js and pnpm for frontend
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './frontend/src-tauri -> target'
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: pnpm install --frozen-lockfile
+
+      # Build and release using Tauri Action
+      - name: Build Tauri app and create release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: ./frontend
+          tagName: ${{ github.ref_name }}
+          releaseName: 'FileFlow Manager ${{ github.ref_name }}'
+          releaseBody: |
+            # FileFlow Manager ${{ github.ref_name }}
+
+            ## What's New
+            See the full changelog for details on what's included in this release.
+
+            ## Installation
+            1. Download the DMG file below
+            2. Open the DMG
+            3. Drag FileFlow Manager to your Applications folder
+            4. Launch from Applications
+
+            ## Requirements
+            - macOS 10.15 (Catalina) or later
+
+            ---
+
+            📦 **Download the DMG below** to get started!
+          releaseDraft: false
+          prerelease: false

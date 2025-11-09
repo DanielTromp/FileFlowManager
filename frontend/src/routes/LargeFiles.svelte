@@ -156,7 +156,12 @@
       on:click={loadLargeFiles}
       disabled={isLoading}
     >
-      {isLoading ? 'Scanning...' : 'Refresh'}
+      {#if isLoading}
+        <span class="loading loading-spinner loading-sm"></span>
+        Scanning...
+      {:else}
+        Refresh
+      {/if}
     </button>
   </div>
 
@@ -250,8 +255,11 @@
             <button
               class="btn btn-sm btn-error"
               on:click={handleDelete}
-              disabled={selectedFiles.size === 0}
+              disabled={selectedFiles.size === 0 || isLoading}
             >
+              {#if isLoading}
+                <span class="loading loading-spinner loading-xs"></span>
+              {/if}
               Delete Selected ({selectedFiles.size})
             </button>
           </div>

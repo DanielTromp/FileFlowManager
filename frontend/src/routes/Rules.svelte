@@ -8,6 +8,8 @@
 
   let showEditor = false;
   let editingRule: Rule | null = null;
+  let togglingRuleId: string | null = null;
+  let deletingRuleId: string | null = null;
 
   // Subscribe to the store
   $: rules = $rulesStore.rules;
@@ -25,6 +27,7 @@
   }
 
   async function handleToggle(ruleId: string, currentEnabled: boolean) {
+    togglingRuleId = ruleId;
     try {
       console.log('Toggling rule:', ruleId, 'from', currentEnabled, 'to', !currentEnabled);
       const updatedRule = await apiToggleRule(ruleId, !currentEnabled);
@@ -36,6 +39,8 @@
       console.error('Failed to toggle rule:', err);
       const errorMsg = err instanceof Error ? err.message : String(err);
       rulesActions.setError(`Failed to toggle rule: ${errorMsg}`);
+    } finally {
+      togglingRuleId = null;
     }
   }
 
@@ -50,6 +55,7 @@
       return;
     }
 
+    deletingRuleId = ruleId;
     try {
       console.log('Deleting rule:', ruleId);
       await apiDeleteRule(ruleId);
@@ -61,6 +67,8 @@
       console.error('Failed to delete rule:', err);
       const errorMsg = err instanceof Error ? err.message : String(err);
       rulesActions.setError(`Failed to delete rule: ${errorMsg}`);
+    } finally {
+      deletingRuleId = null;
     }
   }
 
@@ -95,21 +103,25 @@
       <p class="text-base-content/60 mt-1">Manage file organization rules</p>
     </div>
     <div class="flex gap-2">
-      <button class="btn btn-ghost btn-sm" on:click={handleRefresh} title="Refresh rules from backend">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="h-5 w-5"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-          />
-        </svg>
+      <button class="btn btn-ghost btn-sm" on:click={handleRefresh} disabled={loading} title="Refresh rules from backend">
+        {#if loading}
+          <span class="loading loading-spinner loading-sm"></span>
+        {:else}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+        {/if}
       </button>
       <button class="btn btn-primary" on:click={handleAddNew}>
         <svg
@@ -202,17 +214,23 @@
               </div>
 
               <div class="flex gap-2">
-                <label class="swap swap-flip">
-                  <input
-                    type="checkbox"
-                    checked={rule.enabled}
-                    on:change={() => handleToggle(rule.id, rule.enabled)}
-                  />
-                  <div class="swap-on btn btn-sm btn-success">ON</div>
-                  <div class="swap-off btn btn-sm btn-ghost">OFF</div>
-                </label>
+                {#if togglingRuleId === rule.id}
+                  <button class="btn btn-sm" disabled>
+                    <span class="loading loading-spinner loading-xs"></span>
+                  </button>
+                {:else}
+                  <label class="swap swap-flip">
+                    <input
+                      type="checkbox"
+                      checked={rule.enabled}
+                      on:change={() => handleToggle(rule.id, rule.enabled)}
+                    />
+                    <div class="swap-on btn btn-sm btn-success">ON</div>
+                    <div class="swap-off btn btn-sm btn-ghost">OFF</div>
+                  </label>
+                {/if}
 
-                <button class="btn btn-sm btn-ghost" title="Edit" on:click={() => handleEdit(rule)}>
+                <button class="btn btn-sm btn-ghost" title="Edit" on:click={() => handleEdit(rule)} disabled={togglingRuleId === rule.id || deletingRuleId === rule.id}>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     class="h-4 w-4"
@@ -233,21 +251,26 @@
                   class="btn btn-sm btn-ghost btn-error"
                   title="Delete"
                   on:click={() => handleDelete(rule.id, rule.name)}
+                  disabled={togglingRuleId === rule.id || deletingRuleId === rule.id}
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
+                  {#if deletingRuleId === rule.id}
+                    <span class="loading loading-spinner loading-xs"></span>
+                  {:else}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                  {/if}
                 </button>
               </div>
             </div>

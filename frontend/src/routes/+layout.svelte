@@ -4,6 +4,7 @@
   import { initializeTheme } from '../lib/stores/theme';
   import ThemeToggle from '../lib/components/ThemeToggle.svelte';
   import { initializeNotifications } from '../lib/notifications';
+  import { open } from '@tauri-apps/api/shell';
 
   export let currentRoute: Writable<string>;
 
@@ -17,6 +18,11 @@
 
   function navigateTo(routeId: string) {
     currentRoute.set(routeId);
+  }
+
+  async function openHelp() {
+    // Open GitHub repository documentation
+    await open('https://github.com/DanielTromp/Filefly-specify#readme');
   }
 
   // Initialize theme on mount (T155)
@@ -60,7 +66,7 @@
         <div>FileFlow Manager v0.1.0</div>
         <div class="mt-1">
           <button class="link link-primary text-xs" on:click={() => navigateTo('settings')}>Settings</button> •
-          <button class="link link-primary text-xs">Help</button>
+          <button class="link link-primary text-xs" on:click={openHelp}>Help</button>
         </div>
       </div>
     </div>

@@ -25,6 +25,7 @@
       },
       "shell": {
         "sidecar": true,
+        "open": true,
         "scope": [
           {
             "name": "fileflow-backend",
