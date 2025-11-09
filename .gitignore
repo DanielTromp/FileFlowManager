@@ -73,6 +73,10 @@ dist/
 dist-ssr/
 *.local
 
+# Tauri externalBin architecture-specific symlinks
+*-aarch64-apple-darwin
+*-x86_64-apple-darwin
+
 # Vite
 .vite/
 .svelte-kit/

@@ -21,4 +21,17 @@ poetry run pyinstaller \
   --hidden-import=fileflow_cli \
   main.py
 
+# Create architecture-specific symlink for Tauri externalBin
+ARCH=$(uname -m)
+if [ "$ARCH" = "arm64" ]; then
+  TARGET_TRIPLE="aarch64-apple-darwin"
+else
+  TARGET_TRIPLE="x86_64-apple-darwin"
+fi
+
+cd dist
+ln -sf fileflow-backend fileflow-backend-${TARGET_TRIPLE}
+cd ..
+
 echo "✓ Build complete! Executable at: dist/fileflow-backend"
+echo "✓ Created Tauri-compatible symlink: dist/fileflow-backend-${TARGET_TRIPLE}"
