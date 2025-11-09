@@ -63,11 +63,8 @@
 
     <div class="absolute bottom-0 w-64 p-4 border-t border-base-300">
       <div class="text-xs text-base-content/60">
-        <div>FileFlow Manager v0.1.0</div>
-        <div class="mt-1">
-          <button class="link link-primary text-xs" on:click={() => navigateTo('settings')}>Settings</button> •
-          <button class="link link-primary text-xs" on:click={openHelp}>Help</button>
-        </div>
+        <button class="link link-primary text-xs" on:click={() => navigateTo('settings')}>Settings</button> •
+        <button class="link link-primary text-xs" on:click={openHelp}>Help</button>
       </div>
     </div>
   </aside>

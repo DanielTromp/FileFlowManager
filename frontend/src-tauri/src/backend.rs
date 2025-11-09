@@ -1,5 +1,6 @@
 use std::process::Command;
 use std::path::PathBuf;
+use tauri::api::process::Command as TauriCommand;
 
 /// Determines if we're running in production (from Applications) or development
 fn is_production() -> bool {
@@ -12,17 +13,25 @@ fn is_production() -> bool {
 /// Get the path to the backend executable based on environment
 pub fn get_backend_executable() -> Result<PathBuf, String> {
     if is_production() {
-        // In production, check bundled executable in app bundle Resources
-        // Executable is at: /Applications/FileFlow Manager.app/Contents/MacOS/FileFlow Manager
-        // Backend binary at: /Applications/FileFlow Manager.app/Contents/Resources/fileflow-backend
+        // In production, use Tauri's sidecar resolution for externalBin
+        // Tauri places external binaries in MacOS directory with -<triple> suffix
         if let Ok(exe) = std::env::current_exe() {
             if let Some(macos_dir) = exe.parent() {
-                if let Some(contents_dir) = macos_dir.parent() {
-                    // Tauri places resources directly in Resources directory
-                    let backend_exe = contents_dir.join("Resources").join("fileflow-backend");
-                    if backend_exe.exists() {
-                        return Ok(backend_exe);
-                    }
+                // Check for architecture-specific sidecar name
+                #[cfg(target_arch = "aarch64")]
+                let backend_name = "fileflow-backend-aarch64-apple-darwin";
+                #[cfg(target_arch = "x86_64")]
+                let backend_name = "fileflow-backend-x86_64-apple-darwin";
+
+                let backend_exe = macos_dir.join(backend_name);
+                if backend_exe.exists() {
+                    return Ok(backend_exe);
+                }
+
+                // Fallback: try without architecture suffix
+                let backend_exe_simple = macos_dir.join("fileflow-backend");
+                if backend_exe_simple.exists() {
+                    return Ok(backend_exe_simple);
                 }
             }
         }
