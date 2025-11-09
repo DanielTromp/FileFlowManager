@@ -79,7 +79,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './frontend/src-tauri -> target'
+          workspaces: 'frontend/src-tauri'
 
       - name: Install frontend dependencies
         working-directory: ./frontend
