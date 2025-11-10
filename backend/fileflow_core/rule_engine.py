@@ -9,6 +9,7 @@ from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
+from fileflow_core.cache import LRUCache
 from fileflow_core.date_organizer import DateOrganizer
 from fileflow_core.duplicate_detector import DuplicateDetector
 from fileflow_core.file_operations import FileOperations
@@ -46,6 +47,10 @@ class RuleEngine:
         self.duplicate_detector = DuplicateDetector(cache)
         self.file_ops = FileOperations()
         self.date_organizer = DateOrganizer()
+
+        # Cache for frequently accessed results
+        self._destination_cache = LRUCache(capacity=1000, ttl=300.0)  # 5 minutes TTL
+        self._env_var_cache = LRUCache(capacity=100, ttl=60.0)  # 1 minute TTL
 
     def scan(
         self,
@@ -260,15 +265,34 @@ class RuleEngine:
         return executed_operations
 
     def _get_destination(self, file: FileMetadata, rule: Rule) -> str:
-        """Determine destination path for a file based on rule."""
-        destination_base = self.expand_env_vars(rule.destination)
+        """Determine destination path for a file based on rule (with caching)."""
+        # Create cache key from file path and rule ID
+        cache_key = f"{file.path}:{rule.id}"
+
+        # Check cache first
+        cached_dest = self._destination_cache.get(cache_key)
+        if cached_dest is not None:
+            return cached_dest
+
+        # Cache environment variable expansion
+        env_cache_key = rule.destination
+        cached_env = self._env_var_cache.get(env_cache_key)
+        if cached_env is not None:
+            destination_base = cached_env
+        else:
+            destination_base = self.expand_env_vars(rule.destination)
+            self._env_var_cache.set(env_cache_key, destination_base)
 
         if rule.organize_by_date:
             # Use date-based organization
             dest_path = self.date_organizer.organize_file_by_date(
                 Path(file.path), destination_base
             )
-            return str(dest_path)
+            destination = str(dest_path)
         else:
             # Simple destination
-            return str(Path(destination_base) / Path(file.path).name)
+            destination = str(Path(destination_base) / Path(file.path).name)
+
+        # Cache the result
+        self._destination_cache.set(cache_key, destination)
+        return destination

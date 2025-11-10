@@ -10,7 +10,8 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from fileflow_core.errors import FileOperationError, TransientFileError
+from fileflow_core.errors import FileOperationError, OperationCancelledError, TransientFileError
+from fileflow_core.progress import ProgressTracker
 from fileflow_core.retry import retry_file_operation
 
 
@@ -284,13 +285,15 @@ class FileOperations:
     def delete_files_batch(
         file_paths: list[Path],
         confirm: bool = True,
+        progress_tracker: ProgressTracker | None = None,
     ) -> dict[str, Any]:
         """
-        Delete multiple files safely with confirmation requirement.
+        Delete multiple files safely with confirmation requirement and progress tracking.
 
         Args:
             file_paths: List of file paths to delete
             confirm: If True, requires explicit confirmation (safety check)
+            progress_tracker: Optional progress tracker for monitoring deletion progress
 
         Returns:
             Dictionary with:
@@ -312,8 +315,17 @@ class FileOperations:
         errors = []
         space_freed_bytes = 0
 
-        for file_path in file_paths:
+        # Initialize progress tracking if provided
+        if progress_tracker:
+            progress_tracker.set_total(len(file_paths))
+            progress_tracker.start()
+
+        for idx, file_path in enumerate(file_paths):
             try:
+                # Check for cancellation
+                if progress_tracker and progress_tracker.is_cancelled():
+                    raise OperationCancelledError()
+
                 # Get file size before deletion
                 if file_path.exists():
                     file_size = file_path.stat().st_size
@@ -328,11 +340,24 @@ class FileOperations:
                     if error_msg:
                         errors.append(f"{file_path.name}: {error_msg}")
 
+                # Update progress
+                if progress_tracker:
+                    progress_tracker.update(completed=idx + 1, current_item=str(file_path.name))
+
+            except OperationCancelledError:
+                if progress_tracker:
+                    progress_tracker.cancel()
+                errors.append("Operation cancelled by user")
+                break
             except Exception as e:
                 failed_count += 1
                 errors.append(f"{file_path.name}: {str(e)}")
 
         space_freed_mb = space_freed_bytes / (1024 * 1024)
+
+        # Complete progress tracking
+        if progress_tracker and not progress_tracker.is_cancelled():
+            progress_tracker.complete()
 
         return {
             "deleted_count": deleted_count,
