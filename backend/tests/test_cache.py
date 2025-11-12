@@ -410,7 +410,7 @@ class TestQueryCache:
         result = [{"id": 1, "name": "Alice"}]
 
         # Set and get
-        cache.set(query, params, result)
+        cache.cache_query(query, params, result)
         cached_result = cache.get(query, params)
 
         assert cached_result == result
@@ -430,8 +430,8 @@ class TestQueryCache:
         result1 = [{"id": 1, "name": "Alice"}]
         result2 = [{"id": 2, "name": "Bob"}]
 
-        cache.set(query, (1,), result1)
-        cache.set(query, (2,), result2)
+        cache.cache_query(query, (1,), result1)
+        cache.cache_query(query, (2,), result2)
 
         assert cache.get(query, (1,)) == result1
         assert cache.get(query, (2,)) == result2
@@ -443,8 +443,8 @@ class TestQueryCache:
         query1 = "SELECT * FROM users WHERE id = ?"
         query2 = "SELECT * FROM posts WHERE user_id = ?"
 
-        cache.set(query1, (1,), [{"id": 1}])
-        cache.set(query2, (1,), [{"id": 1}])
+        cache.cache_query(query1, (1,), [{"id": 1}])
+        cache.cache_query(query2, (1,), [{"id": 1}])
 
         # Invalidate users table
         cache.invalidate_table("users")
@@ -496,7 +496,7 @@ class TestQueryCache:
         params = (1,)
         result = [{"id": 1}]
 
-        cache.set(query, params, result)
+        cache.cache_query(query, params, result)
         assert cache.get(query, params) == result
 
         time.sleep(0.15)  # Wait for expiration
@@ -536,7 +536,7 @@ class TestCacheIntegration:
                 cursor = conn.cursor()
                 cursor.execute(query, params)
                 result = cursor.fetchall()
-                query_cache.set(query, params, result)
+                query_cache.cache_query(query, params, result)
 
             # Second query - cached
             cached_result = query_cache.get(query, params)

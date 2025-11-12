@@ -178,7 +178,7 @@ class TestDatabaseWithRetryAndCache:
                 cursor = conn.cursor()
                 cursor.execute(query, params)
                 result1 = cursor.fetchall()
-                cache.set(query, params, result1)
+                cache.cache_query(query, params, result1)
 
             # Second query - from cache
             cached_result = cache.get(query, params)

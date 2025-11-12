@@ -5,6 +5,8 @@ Provides in-memory caching, connection pooling, and cache invalidation
 strategies for frequently accessed data.
 """
 
+from __future__ import annotations
+
 import functools
 import hashlib
 import logging
@@ -15,7 +17,7 @@ from collections import OrderedDict
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Set, TypeVar
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -342,7 +344,7 @@ class QueryCache:
         cache_key = self._make_key(query, params)
         return self._cache.get(cache_key)
 
-    def set(self, query: str, params: tuple[Any, ...], result: Any) -> None:
+    def cache_query(self, query: str, params: tuple[Any, ...], result: Any) -> None:
         """
         Cache query result.
 
@@ -386,7 +388,7 @@ class QueryCache:
         return hashlib.md5(key_data.encode()).hexdigest()
 
     @staticmethod
-    def _extract_tables(query: str) -> Set[str]:
+    def _extract_tables(query: str) -> set[str]:
         """Extract table names from SQL query (simplified)."""
         import re
 

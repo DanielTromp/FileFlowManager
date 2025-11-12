@@ -271,14 +271,14 @@ class MetricsExporter:
         if snapshot.timers:
             lines.append("PERFORMANCE TIMERS")
             lines.append("-" * 80)
-            for name, stats in sorted(snapshot.timers.items()):
-                if stats.get("count", 0) > 0:
+            for name, timer_stats in sorted(snapshot.timers.items()):
+                if timer_stats.get("count", 0) > 0:
                     lines.append(f"Timer: {name}")
-                    lines.append(f"  Count:   {stats['count']:,}")
-                    lines.append(f"  Mean:    {stats['mean']:.4f}s")
-                    lines.append(f"  P50:     {stats['p50']:.4f}s")
-                    lines.append(f"  P95:     {stats['p95']:.4f}s")
-                    lines.append(f"  P99:     {stats['p99']:.4f}s")
+                    lines.append(f"  Count:   {timer_stats['count']:,}")
+                    lines.append(f"  Mean:    {timer_stats['mean']:.4f}s")
+                    lines.append(f"  P50:     {timer_stats['p50']:.4f}s")
+                    lines.append(f"  P95:     {timer_stats['p95']:.4f}s")
+                    lines.append(f"  P99:     {timer_stats['p99']:.4f}s")
                     lines.append("")
 
         lines.append("=" * 80)

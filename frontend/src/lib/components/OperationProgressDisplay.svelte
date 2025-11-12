@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { getAllOperationsProgress, cancelOperation } from "$lib/api";
-  import type { AllOperationsProgress, OperationProgress, OperationProgressStatus } from "$lib/types";
+  import type { AllOperationsProgress, OperationProgressStatus } from "$lib/types";
 
   let operationsProgress: AllOperationsProgress | null = null;
   let loading = true;
@@ -168,10 +168,15 @@
                       <span>{getStatusIcon(progress.status)}</span>
                       <span class="uppercase">{progress.status}</span>
                     </div>
-                    <span class="text-sm font-mono text-base-content/60">{opId.substring(0, 8)}</span>
+                    <span class="text-sm font-mono text-base-content/60"
+                      >{opId.substring(0, 8)}</span
+                    >
                   </div>
                   {#if progress.current_item}
-                    <p class="mt-2 truncate text-sm text-base-content/70" title={progress.current_item}>
+                    <p
+                      class="mt-2 truncate text-sm text-base-content/70"
+                      title={progress.current_item}
+                    >
                       {progress.current_item}
                     </p>
                   {/if}
@@ -196,9 +201,7 @@
               {#if progress.status === "running" || progress.status === "paused"}
                 <div class="mb-3">
                   <div class="mb-1 flex justify-between text-sm">
-                    <span
-                      >{progress.completed_items} / {progress.total_items} items</span
-                    >
+                    <span>{progress.completed_items} / {progress.total_items} items</span>
                     <span class="font-bold">{progress.percentage.toFixed(1)}%</span>
                   </div>
                   <progress
@@ -218,7 +221,9 @@
                 {#if progress.estimated_remaining !== null && progress.estimated_remaining !== undefined}
                   <div class="rounded bg-base-200 p-2">
                     <div class="text-xs text-base-content/60">Remaining</div>
-                    <div class="font-mono font-bold">{formatDuration(progress.estimated_remaining)}</div>
+                    <div class="font-mono font-bold">
+                      {formatDuration(progress.estimated_remaining)}
+                    </div>
                   </div>
                 {/if}
                 <div class="rounded bg-base-200 p-2">

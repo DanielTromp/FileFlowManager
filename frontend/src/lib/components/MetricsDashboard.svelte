@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { getSystemMetrics, getCacheStatistics } from "$lib/api";
-  import type { SystemMetrics, CacheStatistics, CacheStats } from "$lib/types";
+  import type { SystemMetrics, CacheStatistics } from "$lib/types";
 
   let metrics: SystemMetrics | null = null;
   let cacheStats: CacheStatistics | null = null;
