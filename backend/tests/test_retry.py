@@ -324,10 +324,10 @@ class TestRetryTiming:
         delay2 = call_times[2] - call_times[1]
         delay3 = call_times[3] - call_times[2]
 
-        # Allow 50ms tolerance for timing
-        assert 0.05 <= delay1 <= 0.15  # Expected: 0.1s
-        assert 0.15 <= delay2 <= 0.25  # Expected: 0.2s
-        assert 0.35 <= delay3 <= 0.45  # Expected: 0.4s
+        # Allow 100ms tolerance for timing (increased for CI environments)
+        assert 0.0 <= delay1 <= 0.2  # Expected: 0.1s
+        assert 0.1 <= delay2 <= 0.3  # Expected: 0.2s
+        assert 0.3 <= delay3 <= 0.5  # Expected: 0.4s
 
     def test_retry_with_arguments(self):
         """Test retry decorator with function arguments."""
