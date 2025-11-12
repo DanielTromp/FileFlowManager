@@ -2,8 +2,8 @@
 
 **Intelligent automated file organization system for macOS**
 
-Version: 0.1.2
-Status: Beta - Core features complete, polishing in progress
+Version: 0.1.4
+Status: Stable
 
 ## Overview
 
