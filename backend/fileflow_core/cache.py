@@ -15,7 +15,7 @@ from collections import OrderedDict
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Set, TypeVar
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -386,7 +386,7 @@ class QueryCache:
         return hashlib.md5(key_data.encode()).hexdigest()
 
     @staticmethod
-    def _extract_tables(query: str) -> Set[str]:
+    def _extract_tables(query: str) -> set[str]:
         """Extract table names from SQL query (simplified)."""
         import re
 

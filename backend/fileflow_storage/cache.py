@@ -49,7 +49,7 @@ class ChecksumCache:
             raise DuplicateDetectionError(
                 f"Failed to calculate checksum: {e}",
                 file_path=str(file_path),
-            )
+            ) from e
 
     def get_checksum(self, file_path: Path) -> str:
         """
@@ -100,7 +100,7 @@ class ChecksumCache:
             raise DuplicateDetectionError(
                 f"Failed to get checksum: {e}",
                 file_path=str(file_path),
-            )
+            ) from e
 
     def invalidate(self, file_path: Path) -> None:
         """Invalidate cache entry for a file."""

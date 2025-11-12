@@ -146,7 +146,7 @@ class Database:
             raise DatabaseError(
                 f"Failed to log operation: {e}",
                 db_path=str(self.db_path),
-            )
+            ) from e
 
     @retry_database_operation
     def get_operation_history(
@@ -235,7 +235,7 @@ class Database:
             raise DatabaseError(
                 f"Failed to retrieve operation history: {e}",
                 db_path=str(self.db_path),
-            )
+            ) from e
 
     @retry_database_operation
     def get_checksum(self, file_path: str) -> ChecksumCacheEntry | None:
@@ -276,7 +276,7 @@ class Database:
             raise DatabaseError(
                 f"Failed to retrieve checksum: {e}",
                 db_path=str(self.db_path),
-            )
+            ) from e
 
     @retry_database_operation
     def cache_checksum(self, entry: ChecksumCacheEntry) -> None:
@@ -313,7 +313,7 @@ class Database:
             raise DatabaseError(
                 f"Failed to cache checksum: {e}",
                 db_path=str(self.db_path),
-            )
+            ) from e
 
     @retry_database_operation
     def find_duplicates_by_checksum(self, checksum: str) -> list[str]:
@@ -344,7 +344,7 @@ class Database:
             raise DatabaseError(
                 f"Failed to find duplicates: {e}",
                 db_path=str(self.db_path),
-            )
+            ) from e
 
     @retry_database_operation
     def clear_old_operations(self, days: int = 90) -> int:
@@ -380,7 +380,7 @@ class Database:
             raise DatabaseError(
                 f"Failed to clear old operations: {e}",
                 db_path=str(self.db_path),
-            )
+            ) from e
 
     @retry_database_operation
     def clear_cache(self) -> int:
@@ -407,7 +407,7 @@ class Database:
             raise DatabaseError(
                 f"Failed to clear cache: {e}",
                 db_path=str(self.db_path),
-            )
+            ) from e
 
     def get_stats(self) -> dict:
         """
@@ -443,7 +443,7 @@ class Database:
             raise DatabaseError(
                 f"Failed to get statistics: {e}",
                 db_path=str(self.db_path),
-            )
+            ) from e
 
     def close(self) -> None:
         """Close all database connections in the pool."""

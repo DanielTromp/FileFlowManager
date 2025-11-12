@@ -140,13 +140,13 @@ class FileScanner:
             raise ScanError(
                 f"Permission denied while scanning: {e}",
                 directory=str(directory),
-            )
+            ) from e
         except Exception as e:
             # Raise as ScanError
             raise ScanError(
                 f"Error scanning directory: {e}",
                 directory=str(directory),
-            )
+            ) from e
 
         return files
 

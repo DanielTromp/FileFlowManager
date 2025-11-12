@@ -96,7 +96,7 @@ class FileOperations:
                 source=str(source),
                 destination=str(destination),
                 recoverable=False,
-            )
+            ) from e
         except OSError as e:
             # OSError might be transient (file lock, network hiccup)
             # Raise as TransientFileError to trigger retry
@@ -104,7 +104,7 @@ class FileOperations:
                 str(e),
                 file_path=str(source),
                 retry_after=1.0,
-            )
+            ) from e
 
     @staticmethod
     def move_file(
@@ -162,14 +162,14 @@ class FileOperations:
                 operation="delete",
                 source=str(file_path),
                 recoverable=False,
-            )
+            ) from e
         except OSError as e:
             # OSError might be transient
             raise TransientFileError(
                 str(e),
                 file_path=str(file_path),
                 retry_after=1.0,
-            )
+            ) from e
 
     @staticmethod
     def delete_file(file_path: Path) -> tuple[bool, str | None]:
@@ -255,14 +255,14 @@ class FileOperations:
                 source=str(source),
                 destination=str(destination),
                 recoverable=False,
-            )
+            ) from e
         except OSError as e:
             # OSError might be transient
             raise TransientFileError(
                 str(e),
                 file_path=str(source),
                 retry_after=1.0,
-            )
+            ) from e
 
     @staticmethod
     def safe_copy(
