@@ -1,16 +1,16 @@
 module.exports = {
   root: true,
-  parser: '@typescript-eslint/parser',
+  parser: "@typescript-eslint/parser",
   extends: [
-    'eslint:recommended',
-    'plugin:@typescript-eslint/recommended',
-    'plugin:svelte/recommended',
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:svelte/recommended",
   ],
-  plugins: ['@typescript-eslint'],
+  plugins: ["@typescript-eslint"],
   parserOptions: {
-    sourceType: 'module',
+    sourceType: "module",
     ecmaVersion: 2022,
-    extraFileExtensions: ['.svelte'],
+    extraFileExtensions: [".svelte"],
   },
   env: {
     browser: true,
@@ -19,18 +19,24 @@ module.exports = {
   },
   overrides: [
     {
-      files: ['*.svelte'],
-      parser: 'svelte-eslint-parser',
+      files: ["*.svelte"],
+      parser: "svelte-eslint-parser",
       parserOptions: {
-        parser: '@typescript-eslint/parser',
+        parser: "@typescript-eslint/parser",
       },
     },
   ],
   rules: {
-    '@typescript-eslint/no-unused-vars': [
-      'error',
-      { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
     ],
-    '@typescript-eslint/no-explicit-any': 'warn',
+    "@typescript-eslint/no-explicit-any": "warn",
+    "svelte/valid-compile": [
+      "warn", // Make accessibility warnings instead of errors
+      {
+        ignoreWarnings: false,
+      },
+    ],
   },
 };

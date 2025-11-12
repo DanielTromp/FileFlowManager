@@ -15,6 +15,7 @@
     "test:watch": "vitest watch",
     "test:coverage": "vitest --coverage",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "type-check": "tsc --noEmit"

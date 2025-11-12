@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { ask } from '@tauri-apps/api/dialog';
-  import { toggleRule as apiToggleRule, deleteRule as apiDeleteRule } from '$lib/api';
-  import type { Rule } from '$lib/types';
-  import RuleEditor from '$lib/components/RuleEditor.svelte';
-  import { rulesStore, rulesActions } from '$lib/stores/rules';
+  import { onMount } from "svelte";
+  import { ask } from "@tauri-apps/api/dialog";
+  import { toggleRule as apiToggleRule, deleteRule as apiDeleteRule } from "$lib/api";
+  import type { Rule } from "$lib/types";
+  import RuleEditor from "$lib/components/RuleEditor.svelte";
+  import { rulesStore, rulesActions } from "$lib/stores/rules";
 
   let showEditor = false;
   let editingRule: Rule | null = null;
@@ -29,14 +29,14 @@
   async function handleToggle(ruleId: string, currentEnabled: boolean) {
     togglingRuleId = ruleId;
     try {
-      console.log('Toggling rule:', ruleId, 'from', currentEnabled, 'to', !currentEnabled);
+      console.log("Toggling rule:", ruleId, "from", currentEnabled, "to", !currentEnabled);
       const updatedRule = await apiToggleRule(ruleId, !currentEnabled);
-      console.log('Toggle result:', updatedRule);
+      console.log("Toggle result:", updatedRule);
 
       // Update the rule in the store
       rulesActions.updateRule(ruleId, updatedRule);
     } catch (err) {
-      console.error('Failed to toggle rule:', err);
+      console.error("Failed to toggle rule:", err);
       const errorMsg = err instanceof Error ? err.message : String(err);
       rulesActions.setError(`Failed to toggle rule: ${errorMsg}`);
     } finally {
@@ -46,25 +46,25 @@
 
   async function handleDelete(ruleId: string, ruleName: string) {
     const confirmed = await ask(`Are you sure you want to delete the rule "${ruleName}"?`, {
-      title: 'Delete Rule',
-      type: 'warning'
+      title: "Delete Rule",
+      type: "warning",
     });
 
     if (!confirmed) {
-      console.log('Delete cancelled by user');
+      console.log("Delete cancelled by user");
       return;
     }
 
     deletingRuleId = ruleId;
     try {
-      console.log('Deleting rule:', ruleId);
+      console.log("Deleting rule:", ruleId);
       await apiDeleteRule(ruleId);
-      console.log('Delete completed');
+      console.log("Delete completed");
 
       // Remove the rule from the store
       rulesActions.deleteRule(ruleId);
     } catch (err) {
-      console.error('Failed to delete rule:', err);
+      console.error("Failed to delete rule:", err);
       const errorMsg = err instanceof Error ? err.message : String(err);
       rulesActions.setError(`Failed to delete rule: ${errorMsg}`);
     } finally {
@@ -103,7 +103,12 @@
       <p class="text-base-content/60 mt-1">Manage file organization rules</p>
     </div>
     <div class="flex gap-2">
-      <button class="btn btn-ghost btn-sm" on:click={handleRefresh} disabled={loading} title="Refresh rules from backend">
+      <button
+        class="btn btn-ghost btn-sm"
+        on:click={handleRefresh}
+        disabled={loading}
+        title="Refresh rules from backend"
+      >
         {#if loading}
           <span class="loading loading-spinner loading-sm"></span>
         {:else}
@@ -230,7 +235,12 @@
                   </label>
                 {/if}
 
-                <button class="btn btn-sm btn-ghost" title="Edit" on:click={() => handleEdit(rule)} disabled={togglingRuleId === rule.id || deletingRuleId === rule.id}>
+                <button
+                  class="btn btn-sm btn-ghost"
+                  title="Edit"
+                  on:click={() => handleEdit(rule)}
+                  disabled={togglingRuleId === rule.id || deletingRuleId === rule.id}
+                >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     class="h-4 w-4"
@@ -282,15 +292,15 @@
                 <h4 class="font-semibold mb-1">Source</h4>
                 <p class="text-base-content/70">
                   <span class="font-mono text-xs">
-                    {rule.source_directories.join(', ')}
+                    {rule.source_directories.join(", ")}
                   </span>
                 </p>
                 <p class="text-base-content/70 mt-1">
-                  Patterns: {rule.source_patterns.join(', ')}
+                  Patterns: {rule.source_patterns.join(", ")}
                 </p>
                 {#if rule.exclude_patterns.length > 0}
                   <p class="text-base-content/70 mt-1">
-                    Exclude: {rule.exclude_patterns.join(', ')}
+                    Exclude: {rule.exclude_patterns.join(", ")}
                   </p>
                 {/if}
               </div>
@@ -301,9 +311,7 @@
                   <span class="font-mono text-xs">{rule.destination}</span>
                 </p>
                 {#if rule.organize_by_date}
-                  <p class="text-base-content/70 mt-1">
-                    📅 Organize by date (YYYY/MM/DD)
-                  </p>
+                  <p class="text-base-content/70 mt-1">📅 Organize by date (YYYY/MM/DD)</p>
                 {/if}
                 {#if rule.detect_duplicates}
                   <p class="text-base-content/70 mt-1">🔍 Detect duplicates</p>

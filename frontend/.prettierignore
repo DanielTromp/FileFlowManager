@@ -1,0 +1,20 @@
+# Dependencies
+node_modules
+pnpm-lock.yaml
+
+# Build outputs
+dist
+dist-ssr
+build
+.svelte-kit
+
+# Tauri
+src-tauri/target
+
+# Generated files
+*.tsbuildinfo
+.vite
+
+# Other
+.DS_Store
+coverage

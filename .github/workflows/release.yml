@@ -30,12 +30,32 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
 
-      # Build backend executable
+      # Run backend quality checks
       - name: Install backend dependencies
         working-directory: ./backend
+        run: poetry install --no-interaction
+
+      - name: Run backend quality checks
+        working-directory: ./backend
         run: |
-          poetry install --no-interaction
-          poetry run pip install pyinstaller
+          echo "Running Ruff linting..."
+          poetry run ruff check .
+
+          echo "Running mypy type checking..."
+          poetry run mypy fileflow_core fileflow_config fileflow_storage fileflow_cli fileflow_api
+
+          echo "Running pytest tests..."
+          poetry run pytest --cov
+
+      # Build Python packages (wheel and sdist)
+      - name: Build Python packages
+        working-directory: ./backend
+        run: poetry build
+
+      # Build backend executable
+      - name: Install PyInstaller
+        working-directory: ./backend
+        run: poetry run pip install pyinstaller
 
       - name: Build backend executable
         working-directory: ./backend
@@ -94,6 +114,18 @@ jobs:
         working-directory: ./frontend
         run: pnpm install --frozen-lockfile
 
+      - name: Run frontend quality checks
+        working-directory: ./frontend
+        run: |
+          echo "Running TypeScript type checking..."
+          pnpm type-check
+
+          echo "Running ESLint..."
+          pnpm lint --max-warnings 100
+
+          echo "Running Prettier check..."
+          pnpm run format:check
+
       # Build and release using Tauri Action
       - name: Build Tauri app and create release
         uses: tauri-apps/tauri-action@v0
@@ -142,3 +174,13 @@ jobs:
             📦 **Download the DMG below** to get started!
           releaseDraft: false
           prerelease: false
+
+      # Upload Python packages as additional release assets
+      - name: Upload Python packages to release
+        run: |
+          gh release upload ${{ github.ref_name }} \
+            backend/dist/fileflow-*.whl \
+            backend/dist/fileflow-*.tar.gz \
+            --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

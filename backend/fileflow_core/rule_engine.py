@@ -5,16 +5,16 @@ Orchestrates file organization based on rules with priority ordering.
 """
 
 import threading
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, List, Optional, Set
 
+from fileflow_core.cache import LRUCache
 from fileflow_core.date_organizer import DateOrganizer
 from fileflow_core.duplicate_detector import DuplicateDetector
 from fileflow_core.file_operations import FileOperations
 from fileflow_core.file_scanner import FileScanner
 from fileflow_core.models import (
-    DuplicatePair,
     FileMetadata,
     FileOperation,
     OperationType,
@@ -30,7 +30,7 @@ class RuleEngine:
     """Execute file organization rules."""
 
     # Class-level cancellation tracking
-    _cancelled_operations: Set[str] = set()
+    _cancelled_operations: set[str] = set()
     _lock = threading.Lock()
 
     def __init__(
@@ -48,11 +48,15 @@ class RuleEngine:
         self.file_ops = FileOperations()
         self.date_organizer = DateOrganizer()
 
+        # Cache for frequently accessed results
+        self._destination_cache = LRUCache(capacity=1000, ttl=300.0)  # 5 minutes TTL
+        self._env_var_cache = LRUCache(capacity=100, ttl=60.0)  # 1 minute TTL
+
     def scan(
         self,
-        rules: List[Rule],
+        rules: list[Rule],
         dry_run: bool = True,
-        progress_callback: Optional[Callable[[str], None]] = None,
+        progress_callback: Callable[[str], None] | None = None,
     ) -> ScanResult:
         """
         Scan files and plan operations based on rules.
@@ -72,7 +76,7 @@ class RuleEngine:
         active_rules.sort(key=lambda r: r.priority)
 
         # Scan files for each rule
-        all_files: List[FileMetadata] = []
+        all_files: list[FileMetadata] = []
         processed_files: set[str] = set()
 
         for rule in active_rules:
@@ -91,7 +95,7 @@ class RuleEngine:
                     processed_files.add(file.path)
 
         # Plan operations
-        planned_operations: List[FileOperation] = []
+        planned_operations: list[FileOperation] = []
 
         for file in all_files:
             for rule in active_rules:
@@ -199,10 +203,10 @@ class RuleEngine:
 
     def execute(
         self,
-        operations: List[FileOperation],
-        progress_callback: Optional[Callable[[str], None]] = None,
-        operation_id: Optional[str] = None,
-    ) -> List[FileOperation]:
+        operations: list[FileOperation],
+        progress_callback: Callable[[str], None] | None = None,
+        operation_id: str | None = None,
+    ) -> list[FileOperation]:
         """
         Execute file operations with cancellation support.
 
@@ -215,13 +219,11 @@ class RuleEngine:
             List of executed operations with results
         """
         executed_operations = []
-        cancelled = False
 
         try:
             for i, operation in enumerate(operations):
                 # Check for cancellation
                 if operation_id and self.is_cancelled(operation_id):
-                    cancelled = True
                     # Mark remaining operations as cancelled
                     for remaining_op in operations[i:]:
                         remaining_op.success = False
@@ -263,15 +265,34 @@ class RuleEngine:
         return executed_operations
 
     def _get_destination(self, file: FileMetadata, rule: Rule) -> str:
-        """Determine destination path for a file based on rule."""
-        destination_base = self.expand_env_vars(rule.destination)
+        """Determine destination path for a file based on rule (with caching)."""
+        # Create cache key from file path and rule ID
+        cache_key = f"{file.path}:{rule.id}"
+
+        # Check cache first
+        cached_dest = self._destination_cache.get(cache_key)
+        if cached_dest is not None:
+            return cached_dest
+
+        # Cache environment variable expansion
+        env_cache_key = rule.destination
+        cached_env = self._env_var_cache.get(env_cache_key)
+        if cached_env is not None:
+            destination_base = cached_env
+        else:
+            destination_base = self.expand_env_vars(rule.destination)
+            self._env_var_cache.set(env_cache_key, destination_base)
 
         if rule.organize_by_date:
             # Use date-based organization
             dest_path = self.date_organizer.organize_file_by_date(
                 Path(file.path), destination_base
             )
-            return str(dest_path)
+            destination = str(dest_path)
         else:
             # Simple destination
-            return str(Path(destination_base) / Path(file.path).name)
+            destination = str(Path(destination_base) / Path(file.path).name)
+
+        # Cache the result
+        self._destination_cache.set(cache_key, destination)
+        return destination

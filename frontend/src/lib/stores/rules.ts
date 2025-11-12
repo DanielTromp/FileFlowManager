@@ -2,9 +2,9 @@
  * Rules state management store with caching
  */
 
-import { writable, derived, get } from 'svelte/store';
-import type { Rule } from '$lib/types';
-import { getRules } from '$lib/api';
+import { writable, derived, get } from "svelte/store";
+import type { Rule } from "$lib/types";
+import { getRules } from "$lib/api";
 
 export interface RulesState {
   rules: Rule[];
@@ -24,9 +24,7 @@ export const rulesStore = writable<RulesState>(initialState);
 
 // Derived stores
 export const rules = derived(rulesStore, ($rules) => $rules.rules);
-export const enabledRules = derived(rulesStore, ($rules) =>
-  $rules.rules.filter((r) => r.enabled)
-);
+export const enabledRules = derived(rulesStore, ($rules) => $rules.rules.filter((r) => r.enabled));
 export const rulesLoading = derived(rulesStore, ($rules) => $rules.loading);
 
 // Cache duration in milliseconds (5 minutes)
@@ -44,7 +42,11 @@ export const rulesActions = {
     if (!forceRefresh && state.lastFetched && state.rules.length > 0) {
       const cacheAge = Date.now() - state.lastFetched;
       if (cacheAge < CACHE_DURATION) {
-        console.log('[RulesStore] Using cached rules (age:', Math.round(cacheAge / 1000), 'seconds)');
+        console.log(
+          "[RulesStore] Using cached rules (age:",
+          Math.round(cacheAge / 1000),
+          "seconds)"
+        );
         return;
       }
     }
@@ -52,7 +54,7 @@ export const rulesActions = {
     rulesStore.update((s) => ({ ...s, loading: true, error: null }));
 
     try {
-      console.log('[RulesStore] Fetching rules from backend');
+      console.log("[RulesStore] Fetching rules from backend");
       const fetchedRules = await getRules();
 
       // Sort by priority
@@ -66,8 +68,8 @@ export const rulesActions = {
         lastFetched: Date.now(),
       }));
     } catch (err) {
-      console.error('[RulesStore] Failed to load rules:', err);
-      const errorMsg = err instanceof Error ? err.message : 'Failed to load rules';
+      console.error("[RulesStore] Failed to load rules:", err);
+      const errorMsg = err instanceof Error ? err.message : "Failed to load rules";
       rulesStore.update((s) => ({
         ...s,
         loading: false,

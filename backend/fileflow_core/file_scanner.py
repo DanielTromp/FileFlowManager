@@ -2,16 +2,19 @@
 File scanner module for FileFlow Manager.
 
 Scans directories for files matching patterns with parallel processing.
+Enhanced with progress tracking and cancellation support.
 """
 
 import fnmatch
 import os
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, List, Optional
 
+from fileflow_core.errors import OperationCancelledError, ScanError
 from fileflow_core.models import FileMetadata, Rule
+from fileflow_core.progress import ProgressTracker
 
 
 class FileScanner:
@@ -24,17 +27,37 @@ class FileScanner:
     def scan_directory(
         self,
         directory: Path,
-        patterns: Optional[List[str]] = None,
-        exclude_patterns: Optional[List[str]] = None,
+        patterns: list[str] | None = None,
+        exclude_patterns: list[str] | None = None,
         recursive: bool = True,
-        progress_callback: Optional[Callable[[str], None]] = None,
-        exclude_dirs: Optional[List[Path]] = None,
-    ) -> List[FileMetadata]:
-        """Scan a single directory for matching files."""
+        progress_callback: Callable[[str], None] | None = None,
+        exclude_dirs: list[Path] | None = None,
+        progress_tracker: ProgressTracker | None = None,
+    ) -> list[FileMetadata]:
+        """
+        Scan a single directory for matching files.
+
+        Args:
+            directory: Directory to scan
+            patterns: Filename patterns to match (default: ["*"])
+            exclude_patterns: Filename patterns to exclude
+            recursive: Whether to scan subdirectories
+            progress_callback: Optional callback for progress updates (legacy)
+            exclude_dirs: Directories to exclude from scan
+            progress_tracker: Optional ProgressTracker for cancellation support
+
+        Returns:
+            List of file metadata for matching files
+
+        Raises:
+            OperationCancelledError: If progress_tracker is cancelled
+            ScanError: If scanning fails critically
+        """
         files = []
         patterns = patterns or ["*"]
         exclude_patterns = exclude_patterns or []
         exclude_dirs = exclude_dirs or []
+        files_processed = 0
 
         try:
             if recursive:
@@ -52,6 +75,15 @@ class FileScanner:
                         dirs.remove(dirname)
 
                     for filename in filenames:
+                        # Update progress tracker (checks for cancellation)
+                        if progress_tracker:
+                            files_processed += 1
+                            progress_tracker.update(
+                                completed=files_processed,
+                                current_item=filename,
+                            )
+
+                        # Legacy callback
                         if progress_callback:
                             progress_callback(filename)
 
@@ -74,6 +106,15 @@ class FileScanner:
                     if not item.is_file():
                         continue
 
+                    # Update progress tracker (checks for cancellation)
+                    if progress_tracker:
+                        files_processed += 1
+                        progress_tracker.update(
+                            completed=files_processed,
+                            current_item=item.name,
+                        )
+
+                    # Legacy callback
                     if progress_callback:
                         progress_callback(item.name)
 
@@ -91,25 +132,52 @@ class FileScanner:
                     if metadata:
                         files.append(metadata)
 
-        except PermissionError:
-            # Skip directories without permission
-            pass
-        except Exception:
-            # Skip problematic directories
-            pass
+        except OperationCancelledError:
+            # User cancelled the operation
+            raise
+        except PermissionError as e:
+            # Raise as ScanError with helpful message
+            raise ScanError(
+                f"Permission denied while scanning: {e}",
+                directory=str(directory),
+            )
+        except Exception as e:
+            # Raise as ScanError
+            raise ScanError(
+                f"Error scanning directory: {e}",
+                directory=str(directory),
+            )
 
         return files
 
     def scan_directories_parallel(
         self,
-        directories: List[Path],
-        patterns: Optional[List[str]] = None,
-        exclude_patterns: Optional[List[str]] = None,
+        directories: list[Path],
+        patterns: list[str] | None = None,
+        exclude_patterns: list[str] | None = None,
         recursive: bool = True,
-        progress_callback: Optional[Callable[[str], None]] = None,
-        exclude_dirs: Optional[List[Path]] = None,
-    ) -> List[FileMetadata]:
-        """Scan multiple directories in parallel."""
+        progress_callback: Callable[[str], None] | None = None,
+        exclude_dirs: list[Path] | None = None,
+        progress_tracker: ProgressTracker | None = None,
+    ) -> list[FileMetadata]:
+        """
+        Scan multiple directories in parallel.
+
+        Args:
+            directories: Directories to scan
+            patterns: Filename patterns to match
+            exclude_patterns: Filename patterns to exclude
+            recursive: Whether to scan subdirectories
+            progress_callback: Optional callback for progress updates (legacy)
+            exclude_dirs: Directories to exclude from scan
+            progress_tracker: Optional ProgressTracker for cancellation support
+
+        Returns:
+            List of file metadata for matching files
+
+        Raises:
+            OperationCancelledError: If progress_tracker is cancelled
+        """
         all_files = []
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
@@ -122,6 +190,7 @@ class FileScanner:
                     recursive,
                     progress_callback,
                     exclude_dirs,
+                    progress_tracker,
                 )
                 for directory in directories
             ]
@@ -130,6 +199,9 @@ class FileScanner:
                 try:
                     files = future.result()
                     all_files.extend(files)
+                except OperationCancelledError:
+                    # User cancelled, propagate
+                    raise
                 except Exception:
                     # Skip failed scans
                     pass
@@ -140,9 +212,24 @@ class FileScanner:
         self,
         rule: Rule,
         expand_env_vars: Callable[[str], str],
-        progress_callback: Optional[Callable[[str], None]] = None,
-    ) -> List[FileMetadata]:
-        """Scan directories for files matching a specific rule."""
+        progress_callback: Callable[[str], None] | None = None,
+        progress_tracker: ProgressTracker | None = None,
+    ) -> list[FileMetadata]:
+        """
+        Scan directories for files matching a specific rule.
+
+        Args:
+            rule: Rule to match files against
+            expand_env_vars: Function to expand environment variables in paths
+            progress_callback: Optional callback for progress updates (legacy)
+            progress_tracker: Optional ProgressTracker for cancellation support
+
+        Returns:
+            List of file metadata for files matching the rule
+
+        Raises:
+            OperationCancelledError: If progress_tracker is cancelled
+        """
         # Expand environment variables in source directories
         directories = [Path(expand_env_vars(d)) for d in rule.source_directories]
 
@@ -176,6 +263,7 @@ class FileScanner:
             recursive=rule.recursive_search,
             progress_callback=progress_callback,
             exclude_dirs=exclude_dirs_list,
+            progress_tracker=progress_tracker,
         )
 
         # Additional filtering based on rule constraints
@@ -205,17 +293,33 @@ class FileScanner:
 
     def find_large_files(
         self,
-        directories: List[Path],
+        directories: list[Path],
         threshold_mb: int = 100,
-        progress_callback: Optional[Callable[[str], None]] = None,
-    ) -> List[FileMetadata]:
-        """Find files larger than threshold, sorted by size (largest first)."""
+        progress_callback: Callable[[str], None] | None = None,
+        progress_tracker: ProgressTracker | None = None,
+    ) -> list[FileMetadata]:
+        """
+        Find files larger than threshold, sorted by size (largest first).
+
+        Args:
+            directories: Directories to scan
+            threshold_mb: Minimum file size in MB
+            progress_callback: Optional callback for progress updates (legacy)
+            progress_tracker: Optional ProgressTracker for cancellation support
+
+        Returns:
+            List of large files sorted by size (largest first)
+
+        Raises:
+            OperationCancelledError: If progress_tracker is cancelled
+        """
         threshold_bytes = threshold_mb * 1024 * 1024
 
         all_files = self.scan_directories_parallel(
             directories,
             patterns=["*"],
             progress_callback=progress_callback,
+            progress_tracker=progress_tracker,
         )
 
         large_files = [f for f in all_files if f.size_bytes >= threshold_bytes]
@@ -227,16 +331,33 @@ class FileScanner:
 
     def find_old_files(
         self,
-        directories: List[Path],
+        directories: list[Path],
         threshold_days: int = 90,
-        file_types: Optional[List[str]] = None,
-        progress_callback: Optional[Callable[[str], None]] = None,
-    ) -> List[FileMetadata]:
-        """Find files older than threshold, sorted by age (oldest first)."""
+        file_types: list[str] | None = None,
+        progress_callback: Callable[[str], None] | None = None,
+        progress_tracker: ProgressTracker | None = None,
+    ) -> list[FileMetadata]:
+        """
+        Find files older than threshold, sorted by age (oldest first).
+
+        Args:
+            directories: Directories to scan
+            threshold_days: Minimum file age in days
+            file_types: Optional list of file extensions to filter
+            progress_callback: Optional callback for progress updates (legacy)
+            progress_tracker: Optional ProgressTracker for cancellation support
+
+        Returns:
+            List of old files sorted by age (oldest first)
+
+        Raises:
+            OperationCancelledError: If progress_tracker is cancelled
+        """
         all_files = self.scan_directories_parallel(
             directories,
             patterns=["*"],
             progress_callback=progress_callback,
+            progress_tracker=progress_tracker,
         )
 
         # Filter by age
@@ -253,7 +374,7 @@ class FileScanner:
 
         return old_files
 
-    def _get_file_metadata(self, file_path: Path) -> Optional[FileMetadata]:
+    def _get_file_metadata(self, file_path: Path) -> FileMetadata | None:
         """Extract metadata from a file."""
         try:
             stats = file_path.stat()

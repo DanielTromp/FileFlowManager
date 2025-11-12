@@ -5,7 +5,6 @@ Uses SHA-256 checksums for accurate duplicate detection.
 """
 
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 from fileflow_core.models import DuplicatePair, FileMetadata
 from fileflow_storage.cache import ChecksumCache
@@ -19,8 +18,8 @@ class DuplicateDetector:
         self.cache = cache
 
     def find_duplicates(
-        self, files: List[FileMetadata]
-    ) -> List[DuplicatePair]:
+        self, files: list[FileMetadata]
+    ) -> list[DuplicatePair]:
         """
         Find duplicate files in a list.
 
@@ -31,7 +30,7 @@ class DuplicateDetector:
             List of duplicate pairs
         """
         # Calculate checksums for all files
-        checksum_map: Dict[str, List[FileMetadata]] = {}
+        checksum_map: dict[str, list[FileMetadata]] = {}
 
         for file in files:
             # Get or calculate checksum
@@ -45,7 +44,7 @@ class DuplicateDetector:
             checksum_map[file.checksum].append(file)
 
         # Find duplicates (checksums with multiple files)
-        duplicates: List[DuplicatePair] = []
+        duplicates: list[DuplicatePair] = []
 
         for checksum, file_list in checksum_map.items():
             if len(file_list) > 1:
@@ -71,7 +70,7 @@ class DuplicateDetector:
 
     def is_duplicate(
         self, file1: Path, file2: Path
-    ) -> Tuple[bool, str, str]:
+    ) -> tuple[bool, str, str]:
         """
         Check if two files are duplicates.
 

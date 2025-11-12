@@ -52,14 +52,39 @@ FileFlow Manager is an intelligent, automated file organization system for macOS
 
 ### Development Setup
 
-#### Prerequisites
+#### Quick Start (Automated)
+
+The easiest way to get started is with our automated setup script:
+
+```bash
+# Clone the repository
+git clone https://github.com/DanielTromp/Filefly-specify.git
+cd Filefly-specify
+
+# Run automated setup
+./setup.sh
+```
+
+The setup script will:
+- ✅ Check prerequisites (Python 3.10+, Poetry, Node.js 18+, pnpm, Rust)
+- ✅ Install missing tools (pnpm, Rust if needed)
+- ✅ Install all dependencies (backend + frontend)
+- ✅ Run quality checks to verify installation
+- ✅ Provide clear next steps
+
+#### Manual Setup (Advanced)
+
+If you prefer manual installation:
+
+**Prerequisites:**
 - macOS 10.15 (Catalina) or newer
 - Python 3.10+
+- Poetry 1.6+
 - Node.js 18.0+
+- pnpm 8+
 - Rust 1.70+ (for Tauri)
-- pnpm
 
-#### Installation
+**Installation:**
 
 1. **Clone the repository**:
 ```bash
@@ -118,27 +143,65 @@ poetry run fileflow config-import <path>    # Import configuration
 
 See [CLI Commands](#cli-commands) for the full list of available commands.
 
-### Creating Your First Release
+### Creating a Release
 
-Once you're ready to distribute the app:
+#### Automated Release (Recommended)
+
+Use the automated release script for a complete, guided release process:
 
 ```bash
-# 1. Update version in package.json and tauri.conf.json
-# 2. Commit the changes
-git add frontend/package.json frontend/src-tauri/tauri.conf.json
-git commit -m "Bump version to 1.0.0"
+./scripts/create-release.sh patch  # or minor, major, or 1.2.3
+```
 
-# 3. Create and push a tag
+The script will:
+- ✅ Run all quality checks (linting, type checking, tests)
+- ✅ Bump version across all files automatically
+- ✅ Prompt for changelog updates
+- ✅ Commit changes with proper message
+- ✅ Create and push git tag
+- ✅ Trigger GitHub Actions automated build
+
+GitHub Actions will then:
+- Build Python packages (wheel + sdist)
+- Build backend executable
+- Build macOS DMG
+- Create GitHub Release
+- Upload all artifacts
+
+**Example:**
+```bash
+# Patch release: 0.1.2 -> 0.1.3
+./scripts/create-release.sh patch
+
+# Minor release: 0.1.2 -> 0.2.0
+./scripts/create-release.sh minor
+
+# Major release: 0.1.2 -> 1.0.0
+./scripts/create-release.sh major
+
+# Specific version
+./scripts/create-release.sh 2.0.0-beta.1
+```
+
+#### Manual Release (Advanced)
+
+For manual control over the release process:
+
+```bash
+# 1. Bump version
+./scripts/bump-version.sh patch
+
+# 2. Update CHANGELOG.md manually
+
+# 3. Commit and tag
+git add -A
+git commit -m "Release v1.0.0"
 git tag v1.0.0
+git push origin main
 git push origin v1.0.0
 ```
 
-GitHub Actions will automatically:
-- Build the backend executable
-- Create the macOS DMG
-- Publish a GitHub Release with the DMG attached
-
-See [RELEASE.md](RELEASE.md) for detailed release instructions.
+See [RELEASE.md](RELEASE.md) for comprehensive release documentation.
 
 ## Features
 
@@ -285,11 +348,20 @@ fileflow config-reset                   # Reset to defaults
 
 ## Documentation
 
-- **Release Process**: [RELEASE.md](RELEASE.md)
-- **Feature Specification**: `specs/001-fileflow-manager/spec.md`
-- **Implementation Plan**: `specs/001-fileflow-manager/plan.md`
-- **Task Breakdown**: `specs/001-fileflow-manager/tasks.md`
-- **Developer Quickstart**: `specs/001-fileflow-manager/quickstart.md`
+### User Documentation
+- **Troubleshooting Guide**: [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Common issues and solutions
+- **Upgrade Guide**: [UPGRADING.md](UPGRADING.md) - Version upgrades and data migration
+
+### Developer Documentation
+- **Contributing Guide**: [CONTRIBUTING.md](CONTRIBUTING.md) - How to contribute to the project
+- **Developer Quickstart**: [specs/001-fileflow-manager/quickstart.md](specs/001-fileflow-manager/quickstart.md) - Setup and development workflow
+- **Release Process**: [RELEASE.md](RELEASE.md) - Creating releases and publishing DMGs
+
+### Design Documentation
+- **Feature Specification**: [specs/001-fileflow-manager/spec.md](specs/001-fileflow-manager/spec.md)
+- **Implementation Plan**: [specs/001-fileflow-manager/plan.md](specs/001-fileflow-manager/plan.md)
+- **Task Breakdown**: [specs/001-fileflow-manager/tasks.md](specs/001-fileflow-manager/tasks.md)
+- **Data Model**: [specs/001-fileflow-manager/data-model.md](specs/001-fileflow-manager/data-model.md)
 
 ## Development
 
@@ -320,20 +392,43 @@ pnpm type-check
 ```
 
 ### Building for Production
+
+#### Complete Build (Recommended)
+
+Build both backend and frontend with quality checks:
+
 ```bash
-# Backend executable
+# Backend packages and executable
 cd backend
-chmod +x build_executable.sh
-./build_executable.sh
+./build.sh  # Runs quality checks and builds
 
 # Frontend DMG
 cd frontend
-pnpm tauri build
+./build-release.sh  # Runs quality checks and builds DMG
 ```
 
-The DMG will be located at:
+#### Individual Builds
+
+**Backend Python Package:**
+```bash
+cd backend
+poetry build
+# Creates: dist/fileflow-X.Y.Z-py3-none-any.whl
+#          dist/fileflow-X.Y.Z.tar.gz
 ```
-frontend/src-tauri/target/release/bundle/dmg/FileFlow Manager_0.1.0_universal.dmg
+
+**Backend Executable:**
+```bash
+cd backend
+./build_executable.sh
+# Creates: dist/fileflow-backend/fileflow-backend
+```
+
+**Frontend DMG:**
+```bash
+cd frontend
+pnpm tauri build
+# Creates: src-tauri/target/release/bundle/dmg/FileFlow Manager_X.Y.Z_*.dmg
 ```
 
 ## Project Origin
@@ -346,4 +441,16 @@ TBD
 
 ## Contributing
 
-This project is currently in active development. Contributions will be welcome once v1.0 is released.
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for:
+
+- Code of conduct
+- Development setup
+- Code style guidelines
+- Testing requirements
+- Pull request process
+
+**Quick Start for Contributors**:
+1. Read the [Contributing Guide](CONTRIBUTING.md)
+2. Follow the [Developer Quickstart](specs/001-fileflow-manager/quickstart.md)
+3. Run `./validate-quickstart.sh` to verify your setup
+4. Check [TROUBLESHOOTING.md](TROUBLESHOOTING.md) if you encounter issues

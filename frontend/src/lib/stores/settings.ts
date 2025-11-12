@@ -2,8 +2,8 @@
  * Settings state management store
  */
 
-import { writable, derived } from 'svelte/store';
-import type { Configuration } from '$lib/types';
+import { writable, derived } from "svelte/store";
+import type { Configuration } from "$lib/types";
 
 export interface SettingsState {
   configuration: Configuration | null;
@@ -20,14 +20,8 @@ const initialState: SettingsState = {
 export const settingsStore = writable<SettingsState>(initialState);
 
 // Derived stores
-export const configuration = derived(
-  settingsStore,
-  ($settings) => $settings.configuration
-);
-export const settingsLoading = derived(
-  settingsStore,
-  ($settings) => $settings.loading
-);
+export const configuration = derived(settingsStore, ($settings) => $settings.configuration);
+export const settingsLoading = derived(settingsStore, ($settings) => $settings.loading);
 
 // Actions
 export const settingsActions = {
@@ -43,9 +37,7 @@ export const settingsActions = {
   updateConfiguration(updates: Partial<Configuration>) {
     settingsStore.update((state) => ({
       ...state,
-      configuration: state.configuration
-        ? { ...state.configuration, ...updates }
-        : null,
+      configuration: state.configuration ? { ...state.configuration, ...updates } : null,
     }));
   },
 

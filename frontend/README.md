@@ -5,6 +5,7 @@ Native macOS desktop application for FileFlow Manager built with Tauri and Svelt
 ## Overview
 
 The FileFlow frontend provides a native macOS GUI for file organization with:
+
 - **Tauri framework** for native desktop integration
 - **Svelte 4** for reactive UI components
 - **TypeScript** for type safety
@@ -63,21 +64,25 @@ frontend/
 ## Technology Stack
 
 ### Frontend Framework
+
 - **Tauri 1.5+** - Native desktop framework (Rust-based)
 - **Svelte 4** - Reactive component framework
 - **TypeScript 5.0+** - Type-safe JavaScript
 - **Vite** - Fast build tool and dev server
 
 ### Styling
+
 - **Tailwind CSS 3** - Utility-first CSS framework
 - **daisyUI** - Component library for Tailwind
 - **PostCSS** - CSS processing
 
 ### State Management
+
 - **Svelte Stores** - Built-in reactive state management
 - Stores for: scan operations, rules, files, settings
 
 ### Development Tools
+
 - **ESLint** - JavaScript/TypeScript linting
 - **Prettier** - Code formatting
 - **TypeScript Compiler** - Type checking
@@ -85,6 +90,7 @@ frontend/
 ## Installation
 
 ### Prerequisites
+
 - Node.js 18.0+ and pnpm
 - Rust 1.70+ (for Tauri)
 - Python 3.10+ with Poetry (backend dependency)
@@ -97,6 +103,7 @@ pnpm install
 ```
 
 This installs:
+
 - Tauri CLI and runtime
 - Svelte and SvelteKit
 - Tailwind CSS and daisyUI
@@ -111,6 +118,7 @@ pnpm tauri dev
 ```
 
 This starts:
+
 1. Vite dev server on `http://localhost:5173`
 2. Tauri window with hot-reload enabled
 3. File watcher for automatic recompilation
@@ -120,19 +128,23 @@ This starts:
 ### Development Tips
 
 **Enable Devtools**:
+
 - Right-click in app → "Inspect Element"
 - Or add to `tauri.conf.json`:
   ```json
   {
     "tauri": {
-      "windows": [{
-        "devtools": true
-      }]
+      "windows": [
+        {
+          "devtools": true
+        }
+      ]
     }
   }
   ```
 
 **View Logs**:
+
 - Tauri logs: Check terminal running `pnpm tauri dev`
 - Backend logs: `~/.local/share/fileflow/fileflow.log`
 
@@ -141,6 +153,7 @@ This starts:
 ### 5 Main Tabs
 
 **1. Dashboard** (`Dashboard.svelte`):
+
 - Scan files button (dry-run)
 - Execute operations button
 - Scan results table with operation details
@@ -148,6 +161,7 @@ This starts:
 - Statistics (files processed, space saved)
 
 **2. Rules** (`Rules.svelte`):
+
 - List of all organization rules
 - Enable/disable toggle for each rule
 - Create new rule button
@@ -156,6 +170,7 @@ This starts:
 - Rule editor modal (`RuleEditor.svelte`)
 
 **3. Large Files** (`LargeFiles.svelte`):
+
 - Threshold slider (default 100MB)
 - Scan button to discover large files
 - File list with size, path, modification date
@@ -164,6 +179,7 @@ This starts:
 - Space to be freed estimate
 
 **4. Old Files** (`OldFiles.svelte`):
+
 - Age threshold slider (default 90 days)
 - Scan button to discover old files
 - File list with age, path, size
@@ -172,6 +188,7 @@ This starts:
 - Confirmation before deletion
 
 **5. Settings** (`Settings.svelte`):
+
 - Current configuration display
 - Export configuration button
 - Import configuration button (replace or merge)
@@ -181,32 +198,27 @@ This starts:
 ### Reusable Components
 
 **ProgressBar** (`ProgressBar.svelte`):
+
 ```svelte
-<ProgressBar
-  current={processed}
-  total={totalFiles}
-  label="Processing files..."
-/>
+<ProgressBar current={processed} total={totalFiles} label="Processing files..." />
 ```
 
 **ConfirmDialog** (`ConfirmDialog.svelte`):
+
 ```svelte
 <ConfirmDialog
   isOpen={showConfirm}
   title="Delete Files"
   message="Are you sure you want to delete 10 files?"
   onConfirm={handleDelete}
-  onCancel={() => showConfirm = false}
+  onCancel={() => (showConfirm = false)}
 />
 ```
 
 **FileList** (`FileList.svelte`):
+
 ```svelte
-<FileList
-  files={largeFiles}
-  columns={['name', 'size', 'path']}
-  onSelect={handleSelect}
-/>
+<FileList files={largeFiles} columns={["name", "size", "path"]} onSelect={handleSelect} />
 ```
 
 ## State Management
@@ -214,22 +226,24 @@ This starts:
 ### Svelte Stores
 
 **scan.ts** - Scan state:
+
 ```typescript
 export const scanState = writable({
   isScanning: false,
   results: [],
   operations: [],
-  progress: 0
+  progress: 0,
 });
 
 export async function executeScan(dryRun: boolean) {
-  scanState.update(s => ({ ...s, isScanning: true }));
+  scanState.update((s) => ({ ...s, isScanning: true }));
   const results = await scanFiles(dryRun);
-  scanState.update(s => ({ ...s, results, isScanning: false }));
+  scanState.update((s) => ({ ...s, results, isScanning: false }));
 }
 ```
 
 **rules.ts** - Rules state:
+
 ```typescript
 export const rulesState = writable<Rule[]>([]);
 
@@ -249,6 +263,7 @@ export async function toggleRule(id: string, enabled: boolean) {
 ```
 
 **files.ts** - File lists:
+
 ```typescript
 export const largeFilesState = writable<FileInfo[]>([]);
 export const oldFilesState = writable<FileInfo[]>([]);
@@ -260,6 +275,7 @@ export async function scanLargeFiles(thresholdMB: number) {
 ```
 
 **settings.ts** - Configuration:
+
 ```typescript
 export const configState = writable<Configuration | null>(null);
 
@@ -280,54 +296,54 @@ export async function exportConfig(path: string) {
 **api.ts** - Wrapper functions for Tauri commands:
 
 ```typescript
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from "@tauri-apps/api/tauri";
 
 // Scan operations
 export async function scanFiles(dryRun: boolean) {
-  return await invoke('scan_files', { dryRun });
+  return await invoke("scan_files", { dryRun });
 }
 
 export async function executeOperations(operations: Operation[]) {
-  return await invoke('execute_operations', { operations });
+  return await invoke("execute_operations", { operations });
 }
 
 // Rule management
 export async function getRules() {
-  return await invoke('get_rules', {});
+  return await invoke("get_rules", {});
 }
 
 export async function createRule(rule: Rule) {
-  return await invoke('create_rule', { rule });
+  return await invoke("create_rule", { rule });
 }
 
 export async function updateRule(id: string, updates: Partial<Rule>) {
-  return await invoke('update_rule', { id, updates });
+  return await invoke("update_rule", { id, updates });
 }
 
 export async function deleteRule(id: string) {
-  return await invoke('delete_rule', { id });
+  return await invoke("delete_rule", { id });
 }
 
 // File discovery
 export async function findLargeFiles(thresholdMB: number) {
-  return await invoke('find_large_files', { thresholdMb: thresholdMB });
+  return await invoke("find_large_files", { thresholdMb: thresholdMB });
 }
 
 export async function findOldFiles(thresholdDays: number) {
-  return await invoke('find_old_files', { thresholdDays });
+  return await invoke("find_old_files", { thresholdDays });
 }
 
 // Configuration
 export async function getConfiguration() {
-  return await invoke('get_configuration', {});
+  return await invoke("get_configuration", {});
 }
 
 export async function exportConfiguration(path: string) {
-  return await invoke('export_configuration', { destinationPath: path });
+  return await invoke("export_configuration", { destinationPath: path });
 }
 
 export async function importConfiguration(path: string, merge: boolean) {
-  return await invoke('import_configuration', { sourcePath: path, merge });
+  return await invoke("import_configuration", { sourcePath: path, merge });
 }
 ```
 
@@ -390,6 +406,7 @@ pnpm tauri build
 ```
 
 This creates:
+
 - **DMG installer**: `src-tauri/target/release/bundle/dmg/FileFlow Manager_0.1.0_aarch64.dmg` (Apple Silicon)
 - **DMG installer**: `src-tauri/target/release/bundle/dmg/FileFlow Manager_0.1.0_x64.dmg` (Intel)
 - **App bundle**: `src-tauri/target/release/bundle/macos/FileFlow Manager.app`
@@ -415,19 +432,17 @@ This creates:
       "active": true,
       "targets": ["dmg", "app"],
       "identifier": "com.fileflow.manager",
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/icon.icns"
-      ]
+      "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.icns"]
     },
-    "windows": [{
-      "title": "FileFlow Manager",
-      "width": 1200,
-      "height": 800,
-      "resizable": true,
-      "fullscreen": false
-    }],
+    "windows": [
+      {
+        "title": "FileFlow Manager",
+        "width": 1200,
+        "height": 800,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
     "security": {
       "csp": null
     },
@@ -524,15 +539,15 @@ Pre-built components from daisyUI:
 
 ```javascript
 module.exports = {
-  content: ['./src/**/*.{html,js,svelte,ts}'],
+  content: ["./src/**/*.{html,js,svelte,ts}"],
   theme: {
     extend: {},
   },
-  plugins: [require('daisyui')],
+  plugins: [require("daisyui")],
   daisyui: {
-    themes: ['light', 'dark'],
+    themes: ["light", "dark"],
   },
-}
+};
 ```
 
 ## Troubleshooting
@@ -563,6 +578,7 @@ RUST_LOG=debug pnpm tauri dev
 ```
 
 **Check Tauri logs**:
+
 - Look for errors in terminal output
 - Check backend logs: `~/.local/share/fileflow/fileflow.log`
 
@@ -583,10 +599,10 @@ pnpm test --coverage
 Test Tauri IPC communication:
 
 ```typescript
-import { test, expect } from 'vitest';
-import { scanFiles } from './api';
+import { test, expect } from "vitest";
+import { scanFiles } from "./api";
 
-test('scanFiles returns results', async () => {
+test("scanFiles returns results", async () => {
   const results = await scanFiles(true);
   expect(results).toBeDefined();
   expect(Array.isArray(results)).toBe(true);

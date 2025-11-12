@@ -2,8 +2,8 @@
  * Files state management store (large files, old files)
  */
 
-import { writable } from 'svelte/store';
-import type { FileMetadata } from '$lib/types';
+import { writable } from "svelte/store";
+import type { FileMetadata } from "$lib/types";
 
 export interface FilesState {
   largeFiles: FileMetadata[];

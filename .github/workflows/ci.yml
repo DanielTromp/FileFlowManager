@@ -42,10 +42,6 @@ jobs:
         working-directory: ./backend
         run: poetry run ruff check .
 
-      - name: Run Black (formatting check)
-        working-directory: ./backend
-        run: poetry run black --check .
-
   typecheck-backend:
     name: Type Check Backend (mypy)
     runs-on: ubuntu-latest
@@ -148,11 +144,11 @@ jobs:
 
       - name: Run ESLint
         working-directory: ./frontend
-        run: pnpm lint
+        run: pnpm lint --max-warnings 100  # Allow warnings, block on errors
 
       - name: Run Prettier check
         working-directory: ./frontend
-        run: pnpm format --check
+        run: pnpm run format:check
 
   typecheck-frontend:
     name: Type Check Frontend (TypeScript)

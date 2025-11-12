@@ -10,19 +10,29 @@ The project uses GitHub Actions to automatically build and release the macOS DMG
 
 1. **Update Version Numbers**
 
-   Update the version in both files:
-   - `frontend/package.json` - Update the `version` field
-   - `frontend/src-tauri/tauri.conf.json` - Update `package.version`
-
-   Example:
-   ```json
-   "version": "1.0.0"
+   Use the automated version bump script (recommended):
+   ```bash
+   ./scripts/bump-version.sh [patch|minor|major|VERSION]
    ```
+
+   Examples:
+   ```bash
+   ./scripts/bump-version.sh patch    # 0.1.0 -> 0.1.1
+   ./scripts/bump-version.sh minor    # 0.1.0 -> 0.2.0
+   ./scripts/bump-version.sh major    # 0.1.0 -> 1.0.0
+   ./scripts/bump-version.sh 1.2.3    # Set to 1.2.3
+   ```
+
+   This automatically updates:
+   - `backend/pyproject.toml`
+   - `frontend/package.json`
+   - `frontend/src-tauri/tauri.conf.json`
+   - `frontend/src-tauri/Cargo.toml`
 
 2. **Commit the Version Changes**
 
    ```bash
-   git add frontend/package.json frontend/src-tauri/tauri.conf.json
+   git add -A
    git commit -m "Bump version to 1.0.0"
    git push
    ```
@@ -61,24 +71,65 @@ The `.github/workflows/release.yml` workflow:
 
 ## Manual Build (for testing)
 
-If you want to build locally without releasing:
+### Quick Setup
+
+Use the automated setup script to install all dependencies:
 
 ```bash
-# Build backend
-cd backend
-poetry install
-poetry add --group dev pyinstaller
-poetry run pyinstaller --onefile --name fileflow-backend main.py
-
-# Build frontend/DMG
-cd ../frontend
-pnpm install
-pnpm tauri build
+./setup.sh
 ```
+
+This will:
+- Check prerequisites (Python 3.10+, Poetry, Node.js, pnpm, Rust)
+- Install backend dependencies
+- Install frontend dependencies
+- Run quality checks
+- Verify installation
+
+### Build Backend Package
+
+Build Python wheel and source distribution:
+
+```bash
+cd backend
+./build.sh
+```
+
+Creates:
+- `dist/fileflow-X.Y.Z-py3-none-any.whl`
+- `dist/fileflow-X.Y.Z.tar.gz`
+
+### Build Backend Executable
+
+Build standalone executable for Tauri:
+
+```bash
+cd backend
+./build_executable.sh
+```
+
+Creates:
+- `dist/fileflow-backend/fileflow-backend`
+- Architecture-specific symlinks
+
+### Build Frontend/DMG
+
+Build macOS application with Tauri:
+
+```bash
+cd frontend
+./build-release.sh
+```
+
+This will:
+- Check backend binary exists
+- Create architecture-specific symlinks
+- Run quality checks (type check, lint, format)
+- Build Tauri DMG
 
 The DMG will be located at:
 ```
-frontend/src-tauri/target/release/bundle/dmg/FileFlow Manager_0.1.0_universal.dmg
+frontend/src-tauri/target/release/bundle/dmg/FileFlow Manager_X.Y.Z_*.dmg
 ```
 
 ## Release Checklist

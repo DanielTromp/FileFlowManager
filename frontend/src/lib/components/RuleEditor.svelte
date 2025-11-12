@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { createRule, updateRule } from '$lib/api';
-  import type { Rule } from '$lib/types';
+  import { createRule, updateRule } from "$lib/api";
+  import type { Rule } from "$lib/types";
 
   export let isOpen = false;
   export let rule: Rule | null = null;
@@ -8,18 +8,18 @@
   export let onCancel: () => void;
 
   // Form state
-  let name = '';
-  let description = '';
+  let name = "";
+  let description = "";
   let enabled = true;
-  let sourcePatterns = [''];
-  let sourceDirectories = [''];
-  let destination = '';
+  let sourcePatterns = [""];
+  let sourceDirectories = [""];
+  let destination = "";
   let organizeByDate = false;
   let detectDuplicates = false;
   let recursiveSearch = true;
-  let fileTypes = [''];
+  let fileTypes = [""];
   let priority = 10;
-  let excludePatterns = [''];
+  let excludePatterns = [""];
   let minSizeKb: number | null = null;
   let maxSizeKb: number | null = null;
   let minAgeDays: number | null = null;
@@ -47,25 +47,25 @@
         recursiveSearch = rule.recursive_search;
         fileTypes = [...rule.file_types];
         priority = rule.priority;
-        excludePatterns = rule.exclude_patterns.length > 0 ? [...rule.exclude_patterns] : [''];
+        excludePatterns = rule.exclude_patterns.length > 0 ? [...rule.exclude_patterns] : [""];
         minSizeKb = rule.min_size_kb ?? null;
         maxSizeKb = rule.max_size_kb ?? null;
         minAgeDays = rule.min_age_days ?? null;
         maxAgeDays = rule.max_age_days ?? null;
       } else {
         // Reset to defaults for new rule
-        name = '';
-        description = '';
+        name = "";
+        description = "";
         enabled = true;
-        sourcePatterns = [''];
-        sourceDirectories = [''];
-        destination = '';
+        sourcePatterns = [""];
+        sourceDirectories = [""];
+        destination = "";
         organizeByDate = false;
         detectDuplicates = false;
         recursiveSearch = true;
-        fileTypes = [''];
+        fileTypes = [""];
         priority = 10;
-        excludePatterns = [''];
+        excludePatterns = [""];
         minSizeKb = null;
         maxSizeKb = null;
         minAgeDays = null;
@@ -75,7 +75,7 @@
   }
 
   function addItem(arr: string[]) {
-    return [...arr, ''];
+    return [...arr, ""];
   }
 
   function removeItem(arr: string[], index: number) {
@@ -86,58 +86,58 @@
     errors = {};
 
     if (!name.trim()) {
-      errors.name = 'Name is required';
+      errors.name = "Name is required";
     } else if (name.length > 100) {
-      errors.name = 'Name must be 100 characters or less';
+      errors.name = "Name must be 100 characters or less";
     }
 
     if (!description.trim()) {
-      errors.description = 'Description is required';
+      errors.description = "Description is required";
     } else if (description.length > 500) {
-      errors.description = 'Description must be 500 characters or less';
+      errors.description = "Description must be 500 characters or less";
     }
 
-    const validSourcePatterns = sourcePatterns.filter(p => p.trim());
+    const validSourcePatterns = sourcePatterns.filter((p) => p.trim());
     if (validSourcePatterns.length === 0) {
-      errors.sourcePatterns = 'At least one source pattern is required';
+      errors.sourcePatterns = "At least one source pattern is required";
     }
 
-    const validSourceDirs = sourceDirectories.filter(d => d.trim());
+    const validSourceDirs = sourceDirectories.filter((d) => d.trim());
     if (validSourceDirs.length === 0) {
-      errors.sourceDirectories = 'At least one source directory is required';
+      errors.sourceDirectories = "At least one source directory is required";
     }
 
     if (!destination.trim()) {
-      errors.destination = 'Destination is required';
+      errors.destination = "Destination is required";
     }
 
-    const validFileTypes = fileTypes.filter(t => t.trim());
+    const validFileTypes = fileTypes.filter((t) => t.trim());
     if (validFileTypes.length === 0) {
-      errors.fileTypes = 'At least one file type is required';
+      errors.fileTypes = "At least one file type is required";
     }
 
     if (priority < 1 || priority > 1000) {
-      errors.priority = 'Priority must be between 1 and 1000';
+      errors.priority = "Priority must be between 1 and 1000";
     }
 
     if (minSizeKb !== null && minSizeKb < 0) {
-      errors.minSizeKb = 'Minimum size cannot be negative';
+      errors.minSizeKb = "Minimum size cannot be negative";
     }
 
     if (maxSizeKb !== null && maxSizeKb < 0) {
-      errors.maxSizeKb = 'Maximum size cannot be negative';
+      errors.maxSizeKb = "Maximum size cannot be negative";
     }
 
     if (minSizeKb !== null && maxSizeKb !== null && maxSizeKb < minSizeKb) {
-      errors.maxSizeKb = 'Maximum size must be greater than or equal to minimum size';
+      errors.maxSizeKb = "Maximum size must be greater than or equal to minimum size";
     }
 
     if (minAgeDays !== null && minAgeDays < 0) {
-      errors.minAgeDays = 'Minimum age cannot be negative';
+      errors.minAgeDays = "Minimum age cannot be negative";
     }
 
     if (maxAgeDays !== null && maxAgeDays < 0) {
-      errors.maxAgeDays = 'Maximum age cannot be negative';
+      errors.maxAgeDays = "Maximum age cannot be negative";
     }
 
     return Object.keys(errors).length === 0;
@@ -153,47 +153,49 @@
         name: name.trim(),
         description: description.trim(),
         enabled,
-        source_patterns: sourcePatterns.filter(p => p.trim()),
-        source_directories: sourceDirectories.filter(d => d.trim()),
+        source_patterns: sourcePatterns.filter((p) => p.trim()),
+        source_directories: sourceDirectories.filter((d) => d.trim()),
         destination: destination.trim(),
         organize_by_date: organizeByDate,
         detect_duplicates: detectDuplicates,
         recursive_search: recursiveSearch,
-        file_types: fileTypes.filter(t => t.trim()).map(t => t.startsWith('.') ? t.substring(1) : t),
+        file_types: fileTypes
+          .filter((t) => t.trim())
+          .map((t) => (t.startsWith(".") ? t.substring(1) : t)),
         priority,
-        exclude_patterns: excludePatterns.filter(p => p.trim()),
+        exclude_patterns: excludePatterns.filter((p) => p.trim()),
         min_size_kb: minSizeKb,
         max_size_kb: maxSizeKb,
         min_age_days: minAgeDays,
         max_age_days: maxAgeDays,
       };
 
-      console.log('Saving rule with data:', ruleData);
+      console.log("Saving rule with data:", ruleData);
 
       if (rule) {
         // Update existing rule
-        console.log('Updating rule:', rule.id);
+        console.log("Updating rule:", rule.id);
         const result = await updateRule({ rule_id: rule.id, updates: ruleData });
-        console.log('Update result:', result);
+        console.log("Update result:", result);
       } else {
         // Create new rule
-        console.log('Creating new rule');
+        console.log("Creating new rule");
         const result = await createRule({ rule: ruleData });
-        console.log('Create result:', result);
+        console.log("Create result:", result);
       }
 
       onSave();
     } catch (err) {
-      console.error('Failed to save rule:', err);
-      console.error('Error details:', JSON.stringify(err, null, 2));
+      console.error("Failed to save rule:", err);
+      console.error("Error details:", JSON.stringify(err, null, 2));
 
       // Try to extract a more useful error message
-      let errorMessage = 'Failed to save rule';
+      let errorMessage = "Failed to save rule";
       if (err instanceof Error) {
         errorMessage = err.message;
-      } else if (typeof err === 'string') {
+      } else if (typeof err === "string") {
         errorMessage = err;
-      } else if (err && typeof err === 'object') {
+      } else if (err && typeof err === "object") {
         errorMessage = JSON.stringify(err);
       }
 
@@ -211,7 +213,7 @@
   <div class="modal modal-open">
     <div class="modal-box max-w-4xl max-h-[90vh] overflow-y-auto">
       <h3 class="font-bold text-2xl mb-4">
-        {rule ? 'Edit Rule' : 'Create New Rule'}
+        {rule ? "Edit Rule" : "Create New Rule"}
       </h3>
 
       {#if errors.general}
@@ -290,21 +292,23 @@
             <button
               type="button"
               class="btn btn-xs btn-ghost"
-              on:click={() => showHints = !showHints}
+              on:click={() => (showHints = !showHints)}
             >
-              {showHints ? 'Hide' : 'Show'} Hints
+              {showHints ? "Hide" : "Show"} Hints
             </button>
           </div>
           {#if showHints}
             <div class="alert alert-info mb-2 text-sm">
               <span>
-                <strong>Patterns:</strong> *.png, Screenshot*.png, *.{jpg,png}<br/>
-                <strong>Env vars:</strong> ${'{'}DESKTOP{'}'}, ${'{'}DOWNLOADS{'}'}, ${'{'}HOME{'}'}<br/>
-                <strong>Templates:</strong> {'{'}year{'}'}, {'{'}month{'}'}, {'{'}day{'}'}, {'{'}name{'}'}
+                <strong>Patterns:</strong> *.png, Screenshot*.png, *.&#123;jpg,png&#125;<br />
+                <strong>Env vars:</strong> ${"{"}DESKTOP{"}"}, ${"{"}DOWNLOADS{"}"}, ${"{"}HOME{"}"}<br
+                />
+                <strong>Templates:</strong>
+                {"{"}year{"}"}, {"{"}month{"}"}, {"{"}day{"}"}, {"{"}name{"}"}
               </span>
             </div>
           {/if}
-          {#each sourcePatterns as pattern, i}
+          {#each sourcePatterns as _pattern, i}
             <div class="flex gap-2 mb-2">
               <input
                 type="text"
@@ -317,7 +321,7 @@
                 <button
                   type="button"
                   class="btn btn-square btn-ghost"
-                  on:click={() => sourcePatterns = removeItem(sourcePatterns, i)}
+                  on:click={() => (sourcePatterns = removeItem(sourcePatterns, i))}
                 >
                   ✕
                 </button>
@@ -327,7 +331,7 @@
           <button
             type="button"
             class="btn btn-sm btn-ghost"
-            on:click={() => sourcePatterns = addItem(sourcePatterns)}
+            on:click={() => (sourcePatterns = addItem(sourcePatterns))}
           >
             + Add Pattern
           </button>
@@ -342,7 +346,7 @@
           <label class="label">
             <span class="label-text font-semibold">Source Directories *</span>
           </label>
-          {#each sourceDirectories as dir, i}
+          {#each sourceDirectories as _dir, i}
             <div class="flex gap-2 mb-2">
               <input
                 type="text"
@@ -355,7 +359,7 @@
                 <button
                   type="button"
                   class="btn btn-square btn-ghost"
-                  on:click={() => sourceDirectories = removeItem(sourceDirectories, i)}
+                  on:click={() => (sourceDirectories = removeItem(sourceDirectories, i))}
                 >
                   ✕
                 </button>
@@ -365,7 +369,7 @@
           <button
             type="button"
             class="btn btn-sm btn-ghost"
-            on:click={() => sourceDirectories = addItem(sourceDirectories)}
+            on:click={() => (sourceDirectories = addItem(sourceDirectories))}
           >
             + Add Directory
           </button>
@@ -380,7 +384,7 @@
           <label class="label">
             <span class="label-text font-semibold">Exclude Patterns (Optional)</span>
           </label>
-          {#each excludePatterns as pattern, i}
+          {#each excludePatterns as _pattern, i}
             <div class="flex gap-2 mb-2">
               <input
                 type="text"
@@ -392,7 +396,7 @@
                 <button
                   type="button"
                   class="btn btn-square btn-ghost"
-                  on:click={() => excludePatterns = removeItem(excludePatterns, i)}
+                  on:click={() => (excludePatterns = removeItem(excludePatterns, i))}
                 >
                   ✕
                 </button>
@@ -402,7 +406,7 @@
           <button
             type="button"
             class="btn btn-sm btn-ghost"
-            on:click={() => excludePatterns = addItem(excludePatterns)}
+            on:click={() => (excludePatterns = addItem(excludePatterns))}
           >
             + Add Exclude Pattern
           </button>
@@ -458,7 +462,7 @@
           <label class="label">
             <span class="label-text font-semibold">File Types *</span>
           </label>
-          {#each fileTypes as type, i}
+          {#each fileTypes as _type, i}
             <div class="flex gap-2 mb-2">
               <input
                 type="text"
@@ -471,7 +475,7 @@
                 <button
                   type="button"
                   class="btn btn-square btn-ghost"
-                  on:click={() => fileTypes = removeItem(fileTypes, i)}
+                  on:click={() => (fileTypes = removeItem(fileTypes, i))}
                 >
                   ✕
                 </button>
@@ -481,7 +485,7 @@
           <button
             type="button"
             class="btn btn-sm btn-ghost"
-            on:click={() => fileTypes = addItem(fileTypes)}
+            on:click={() => (fileTypes = addItem(fileTypes))}
           >
             + Add File Type
           </button>
@@ -600,11 +604,9 @@
 
         <!-- Actions -->
         <div class="modal-action">
-          <button type="button" class="btn btn-ghost" on:click={handleCancel}>
-            Cancel
-          </button>
+          <button type="button" class="btn btn-ghost" on:click={handleCancel}> Cancel </button>
           <button type="submit" class="btn btn-primary">
-            {rule ? 'Update Rule' : 'Create Rule'}
+            {rule ? "Update Rule" : "Create Rule"}
           </button>
         </div>
       </form>

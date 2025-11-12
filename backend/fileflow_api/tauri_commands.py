@@ -10,18 +10,25 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fileflow_config.config_manager import ConfigManager
 from fileflow_config.defaults import create_default_config_file
+from fileflow_core.cache_monitor import CacheMonitor
+from fileflow_core.health import HealthChecker
 from fileflow_core.logging_config import get_logger, setup_logging
-from fileflow_core.models import FileOperation, ScanResult
+from fileflow_core.metrics_export import MetricsExporter
+from fileflow_core.observability import get_metrics
+from fileflow_core.progress import ProgressManager
 from fileflow_core.rule_engine import RuleEngine
 from fileflow_storage.cache import ChecksumCache
 from fileflow_storage.database import Database
 
 # Setup logging
 logger = get_logger("tauri_commands")
+
+# Global progress manager for tracking operations
+_progress_manager = ProgressManager()
 
 
 # Error codes from contracts/tauri-ipc.md (T137)
@@ -41,7 +48,7 @@ class CommandError(Exception):
         self.details = details
         super().__init__(message)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {
             "code": self.code,
@@ -70,7 +77,7 @@ def get_database() -> Database:
     return Database(DEFAULT_DB_PATH)
 
 
-def scan_files(dry_run: bool = True, rule_ids: Optional[List[str]] = None) -> Dict[str, Any]:
+def scan_files(dry_run: bool = True, rule_ids: list[str] | None = None) -> dict[str, Any]:
     """
     Scan files according to active rules.
 
@@ -134,26 +141,31 @@ def scan_files(dry_run: bool = True, rule_ids: Optional[List[str]] = None) -> Di
             logger.info(f"Executing {len(result.planned_operations)} operations")
             import uuid
             operation_id = str(uuid.uuid4())
-            start_time = time.time()
             total_operations = len(result.planned_operations)
 
-            # Progress tracking for long operations
-            executed_ops = []
-            for i, op in enumerate(result.planned_operations):
-                elapsed = time.time() - start_time
-                if elapsed > 5:  # Emit progress after 5 seconds
-                    progress_data = {
-                        "type": "scan_execution_progress",
-                        "operation_id": operation_id,
-                        "message": f"Executing: {Path(op.source_path).name}",
-                        "current": i + 1,
-                        "total": total_operations,
-                        "elapsed_seconds": elapsed
-                    }
-                    print(f"PROGRESS:{json.dumps(progress_data)}", file=sys.stderr)
+            # Create progress tracker for the operation
+            tracker = _progress_manager.create_tracker(
+                operation_id=operation_id,
+                total_items=total_operations
+            )
+            tracker.start()
 
-                executed_op = engine.execute([op], operation_id=operation_id)[0]
-                executed_ops.append(executed_op)
+            # Execute operations with progress tracking
+            executed_ops = []
+            try:
+                for i, op in enumerate(result.planned_operations):
+                    tracker.update(
+                        completed=i,
+                        current_item=f"Executing: {Path(op.source_path).name}"
+                    )
+                    executed_op = engine.execute([op], operation_id=operation_id)[0]
+                    executed_ops.append(executed_op)
+
+                # Mark operation as complete
+                tracker.complete()
+            except Exception as e:
+                tracker.fail(str(e))
+                raise
 
             # Update result with executed operations
             result.planned_operations = executed_ops
@@ -180,8 +192,8 @@ def scan_files(dry_run: bool = True, rule_ids: Optional[List[str]] = None) -> Di
 
 
 def execute_operations(
-    operation_ids: List[str], confirm_deletions: bool = False
-) -> Dict[str, Any]:
+    operation_ids: list[str], confirm_deletions: bool = False
+) -> dict[str, Any]:
     """
     Execute specific file operations from a previous scan.
 
@@ -259,8 +271,8 @@ def execute_operations(
                         )
 
         # Generate operation ID for cancellation tracking
-        import uuid
         import time
+        import uuid
         operation_id = str(uuid.uuid4())
 
         # Track progress for long operations
@@ -336,7 +348,7 @@ def execute_operations(
         )
 
 
-def cancel_operation(operation_id: str) -> Dict[str, Any]:
+def cancel_operation(operation_id: str) -> dict[str, Any]:
     """
     Cancel an ongoing operation.
 
@@ -372,7 +384,7 @@ def cancel_operation(operation_id: str) -> Dict[str, Any]:
         )
 
 
-def get_rules() -> List[Dict[str, Any]]:
+def get_rules() -> list[dict[str, Any]]:
     """
     Get all configured rules.
 
@@ -394,7 +406,7 @@ def get_rules() -> List[Dict[str, Any]]:
         )
 
 
-def get_configuration() -> Dict[str, Any]:
+def get_configuration() -> dict[str, Any]:
     """
     Get current configuration.
 
@@ -416,7 +428,7 @@ def get_configuration() -> Dict[str, Any]:
         )
 
 
-def export_configuration(destination_path: str) -> Dict[str, Any]:
+def export_configuration(destination_path: str) -> dict[str, Any]:
     """
     Export configuration to file (T127).
 
@@ -460,7 +472,7 @@ def export_configuration(destination_path: str) -> Dict[str, Any]:
 def import_configuration(
     source_path: str,
     merge: bool = False
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Import configuration from file (T128).
 
@@ -537,10 +549,10 @@ def detect_screenshot_location() -> str:
 def get_operation_history(
     limit: int = 100,
     offset: int = 0,
-    operation_type: Optional[str] = None,
-    rule_id: Optional[str] = None,
+    operation_type: str | None = None,
+    rule_id: str | None = None,
     include_dry_runs: bool = False,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Retrieve operation history from database.
 
@@ -586,7 +598,7 @@ def get_operation_history(
         )
 
 
-def create_rule(rule_data: Dict[str, Any]) -> Dict[str, Any]:
+def create_rule(rule_data: dict[str, Any]) -> dict[str, Any]:
     """
     Create a new rule.
 
@@ -662,7 +674,7 @@ def create_rule(rule_data: Dict[str, Any]) -> Dict[str, Any]:
         )
 
 
-def update_rule(rule_id: str, rule_data: Dict[str, Any]) -> Dict[str, Any]:
+def update_rule(rule_id: str, rule_data: dict[str, Any]) -> dict[str, Any]:
     """
     Update an existing rule.
 
@@ -729,7 +741,7 @@ def update_rule(rule_id: str, rule_data: Dict[str, Any]) -> Dict[str, Any]:
         )
 
 
-def delete_rule(rule_id: str) -> Dict[str, Any]:
+def delete_rule(rule_id: str) -> dict[str, Any]:
     """
     Delete a rule.
 
@@ -782,7 +794,7 @@ def delete_rule(rule_id: str) -> Dict[str, Any]:
         )
 
 
-def toggle_rule(rule_id: str, enabled: bool) -> Dict[str, Any]:
+def toggle_rule(rule_id: str, enabled: bool) -> dict[str, Any]:
     """
     Enable or disable a rule.
 
@@ -837,8 +849,8 @@ def toggle_rule(rule_id: str, enabled: bool) -> Dict[str, Any]:
 
 def get_large_files(
     threshold_mb: int = 100,
-    limit: Optional[int] = None,
-) -> List[Dict[str, Any]]:
+    limit: int | None = None,
+) -> list[dict[str, Any]]:
     """
     Find files larger than threshold.
 
@@ -899,9 +911,9 @@ def get_large_files(
 
 def get_old_files(
     threshold_days: int = 90,
-    file_types: Optional[List[str]] = None,
-    limit: Optional[int] = None,
-) -> List[Dict[str, Any]]:
+    file_types: list[str] | None = None,
+    limit: int | None = None,
+) -> list[dict[str, Any]]:
     """
     Find files older than threshold.
 
@@ -963,9 +975,9 @@ def get_old_files(
 
 
 def delete_files(
-    file_paths: List[str],
+    file_paths: list[str],
     confirm_deletions: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Delete multiple files with confirmation.
 
@@ -1001,8 +1013,28 @@ def delete_files(
         # Convert to Path objects
         paths = [Path(p) for p in file_paths]
 
+        # Create progress tracker if deleting many files (>10 files likely takes >5 seconds)
+        tracker = None
+        if len(paths) > 10:
+            import uuid
+            operation_id = str(uuid.uuid4())
+            tracker = _progress_manager.create_tracker(
+                operation_id=operation_id,
+                total_items=len(paths)
+            )
+            tracker.start()
+
         # Perform batch deletion
-        result = FileOperations.delete_files_batch(paths, confirm=True)
+        try:
+            result = FileOperations.delete_files_batch(paths, confirm=True)
+            if tracker:
+                # Mark all files as processed
+                tracker.update(completed=len(paths))
+                tracker.complete()
+        except Exception as e:
+            if tracker:
+                tracker.fail(str(e))
+            raise
 
         logger.info(
             f"Deleted {result['deleted_count']} files, "
@@ -1022,6 +1054,265 @@ def delete_files(
         )
 
 
+def get_system_metrics() -> dict[str, Any]:
+    """
+    Get current system metrics.
+
+    Returns:
+        Dictionary with counters, gauges, histograms, and timers
+
+    Raises:
+        CommandError: If metrics cannot be retrieved
+    """
+    try:
+        metrics = get_metrics()
+        all_metrics = metrics.get_all_metrics()
+
+        logger.debug("Retrieved system metrics")
+
+        return all_metrics
+
+    except Exception as e:
+        logger.error(f"Failed to get metrics: {e}", exc_info=True)
+        raise CommandError(
+            "METRICS_FAILED",
+            f"Failed to retrieve metrics: {str(e)}",
+            {"original_error": str(e)}
+        )
+
+
+def get_health_status() -> dict[str, Any]:
+    """
+    Get system health status.
+
+    Returns:
+        Dictionary with health check results and overall status
+
+    Raises:
+        CommandError: If health check fails
+    """
+    try:
+        checker = HealthChecker()
+
+        # Run all health checks
+        results = checker.run_all_checks(
+            db_path=str(DEFAULT_DB_PATH),
+            cache_hit_rate=0.8,  # TODO: Get actual cache hit rate
+            fs_path=str(Path.home()),
+            avg_operation_time=0.1,  # TODO: Get actual avg operation time
+        )
+
+        # Get overall status
+        overall = checker.get_overall_status(results)
+
+        # Convert results to dict
+        results_dict = {
+            name: {
+                "status": result.status.value,
+                "message": result.message,
+                "latency_ms": result.latency_ms,
+                "details": result.details,
+            }
+            for name, result in results.items()
+        }
+
+        logger.debug(f"Health check complete: {overall.value}")
+
+        return {
+            "overall_status": overall.value,
+            "checks": results_dict,
+            "timestamp": time.time(),
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get health status: {e}", exc_info=True)
+        raise CommandError(
+            "HEALTH_CHECK_FAILED",
+            f"Failed to perform health check: {str(e)}",
+            {"original_error": str(e)}
+        )
+
+
+def get_cache_statistics() -> dict[str, Any]:
+    """
+    Get cache performance statistics.
+
+    Returns:
+        Dictionary with cache stats for all caches
+
+    Raises:
+        CommandError: If cache stats cannot be retrieved
+    """
+    try:
+        monitor = CacheMonitor()
+
+        # Get all cache stats
+        all_stats = monitor.get_all_cache_stats()
+
+        # Convert to dict
+        stats_dict = {
+            name: {
+                "hits": stats.hits,
+                "misses": stats.misses,
+                "hit_rate": stats.hit_rate,
+                "size": stats.size,
+                "capacity": stats.capacity,
+                "evictions": stats.evictions,
+            }
+            for name, stats in all_stats.items()
+        }
+
+        logger.debug(f"Retrieved stats for {len(stats_dict)} caches")
+
+        return {
+            "caches": stats_dict,
+            "timestamp": time.time(),
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get cache statistics: {e}", exc_info=True)
+        raise CommandError(
+            "CACHE_STATS_FAILED",
+            f"Failed to retrieve cache statistics: {str(e)}",
+            {"original_error": str(e)}
+        )
+
+
+def export_metrics(
+    format: str = "json",
+    include_health: bool = True,
+) -> dict[str, Any]:
+    """
+    Export metrics in specified format.
+
+    Args:
+        format: Export format ("json", "prometheus", or "report")
+        include_health: Include health check data in snapshot
+
+    Returns:
+        Dictionary with exported data
+
+    Raises:
+        CommandError: If export fails
+    """
+    try:
+        exporter = MetricsExporter()
+
+        # Take snapshot
+        snapshot = exporter.take_snapshot(include_health_checks=include_health)
+
+        # Export in requested format
+        if format == "json":
+            data = exporter.export_json(snapshot, pretty=True)
+        elif format == "prometheus":
+            data = exporter.export_prometheus(snapshot)
+        elif format == "report":
+            data = exporter.export_report(snapshot)
+        else:
+            raise CommandError(
+                "INVALID_FORMAT",
+                f"Unknown export format: {format}",
+                {"format": format, "valid_formats": ["json", "prometheus", "report"]}
+            )
+
+        # Get summary stats
+        summary = exporter.get_summary_stats(snapshot)
+
+        logger.info(f"Exported metrics in {format} format")
+
+        return {
+            "format": format,
+            "data": data,
+            "summary": summary,
+            "timestamp": snapshot.timestamp.isoformat(),
+        }
+
+    except CommandError:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to export metrics: {e}", exc_info=True)
+        raise CommandError(
+            "EXPORT_FAILED",
+            f"Failed to export metrics: {str(e)}",
+            {"original_error": str(e)}
+        )
+
+
+def get_operation_progress(operation_id: str) -> dict[str, Any]:
+    """
+    Get progress information for a specific operation.
+
+    Args:
+        operation_id: ID of the operation to get progress for
+
+    Returns:
+        Dictionary with progress information
+
+    Raises:
+        CommandError: If operation not found
+    """
+    try:
+        tracker = _progress_manager.get_tracker(operation_id)
+
+        if tracker is None:
+            raise CommandError(
+                "OPERATION_NOT_FOUND",
+                f"Operation {operation_id} not found",
+                {"operation_id": operation_id}
+            )
+
+        progress = tracker.get_progress()
+
+        logger.debug(f"Retrieved progress for operation {operation_id}")
+
+        return progress.to_dict()
+
+    except CommandError:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get operation progress: {e}", exc_info=True)
+        raise CommandError(
+            "PROGRESS_FAILED",
+            f"Failed to get operation progress: {str(e)}",
+            {"original_error": str(e)}
+        )
+
+
+def get_all_operations_progress() -> dict[str, Any]:
+    """
+    Get progress information for all operations.
+
+    Returns:
+        Dictionary with progress for all operations
+
+    Raises:
+        CommandError: If progress cannot be retrieved
+    """
+    try:
+        all_progress = _progress_manager.get_all_progress()
+
+        # Convert list to dict keyed by operation_id
+        progress_dict = {
+            progress.operation_id: progress.to_dict()
+            for progress in all_progress
+        }
+
+        logger.debug(f"Retrieved progress for {len(progress_dict)} operations")
+
+        return {
+            "operations": progress_dict,
+            "timestamp": time.time(),
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get all operations progress: {e}", exc_info=True)
+        raise CommandError(
+            "PROGRESS_FAILED",
+            f"Failed to get operations progress: {str(e)}",
+            {"original_error": str(e)}
+        )
+
+
 # CLI entry point for Tauri sidecar
 if __name__ == "__main__":
     # Setup logging
@@ -1033,6 +1324,7 @@ if __name__ == "__main__":
         args = json.loads(sys.argv[2]) if len(sys.argv) > 2 else {}
 
         try:
+            result: Any
             if command == "scan_files":
                 result = scan_files(**args)
             elif command == "execute_operations":
@@ -1065,6 +1357,18 @@ if __name__ == "__main__":
                 result = export_configuration(**args)
             elif command == "import_configuration":
                 result = import_configuration(**args)
+            elif command == "get_system_metrics":
+                result = get_system_metrics()
+            elif command == "get_health_status":
+                result = get_health_status()
+            elif command == "get_cache_statistics":
+                result = get_cache_statistics()
+            elif command == "export_metrics":
+                result = export_metrics(**args)
+            elif command == "get_operation_progress":
+                result = get_operation_progress(**args)
+            elif command == "get_all_operations_progress":
+                result = get_all_operations_progress()
             else:
                 result = {"error": f"Unknown command: {command}"}
 

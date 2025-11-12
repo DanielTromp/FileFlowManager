@@ -7,8 +7,6 @@ Models are based on the data-model.md specification.
 
 from datetime import datetime
 from enum import Enum
-from pathlib import Path
-from typing import List, Optional
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, computed_field, field_validator
@@ -38,25 +36,25 @@ class Rule(BaseModel):
     enabled: bool = True
     name: str = Field(..., min_length=1, max_length=100)
     description: str = Field(..., max_length=500)
-    source_patterns: List[str] = Field(..., min_length=1)
-    source_directories: List[str] = Field(..., min_length=1)
+    source_patterns: list[str] = Field(..., min_length=1)
+    source_directories: list[str] = Field(..., min_length=1)
     destination: str
     organize_by_date: bool = False
     detect_duplicates: bool = True
     recursive_search: bool = True
-    file_types: List[str] = Field(..., min_length=1)
+    file_types: list[str] = Field(..., min_length=1)
     priority: int = Field(10, ge=1, le=1000)
-    exclude_patterns: List[str] = Field(default_factory=list)
-    min_size_kb: Optional[int] = Field(None, ge=0)
-    max_size_kb: Optional[int] = Field(None, ge=0)
-    min_age_days: Optional[int] = Field(None, ge=0)
-    max_age_days: Optional[int] = Field(None, ge=0)
+    exclude_patterns: list[str] = Field(default_factory=list)
+    min_size_kb: int | None = Field(None, ge=0)
+    max_size_kb: int | None = Field(None, ge=0)
+    min_age_days: int | None = Field(None, ge=0)
+    max_age_days: int | None = Field(None, ge=0)
     created_at: datetime = Field(default_factory=datetime.now)
     last_modified: datetime = Field(default_factory=datetime.now)
 
     @field_validator("max_size_kb")
     @classmethod
-    def validate_max_size(cls, v: Optional[int], info) -> Optional[int]:
+    def validate_max_size(cls, v: int | None, info) -> int | None:
         """Ensure max_size is greater than min_size if both are set."""
         if v is not None and info.data.get("min_size_kb") is not None:
             if v <= info.data["min_size_kb"]:
@@ -65,7 +63,7 @@ class Rule(BaseModel):
 
     @field_validator("max_age_days")
     @classmethod
-    def validate_max_age(cls, v: Optional[int], info) -> Optional[int]:
+    def validate_max_age(cls, v: int | None, info) -> int | None:
         """Ensure max_age is greater than min_age if both are set."""
         if v is not None and info.data.get("min_age_days") is not None:
             if v <= info.data["min_age_days"]:
@@ -82,16 +80,16 @@ class FileMetadata(BaseModel):
     size_bytes: int = Field(ge=0)
     created_at: datetime
     modified_at: datetime
-    checksum: Optional[str] = None
-    matched_rules: List[str] = Field(default_factory=list)
+    checksum: str | None = None
+    matched_rules: list[str] = Field(default_factory=list)
 
-    @computed_field
+    @computed_field  # type: ignore[misc]
     @property
     def age_days(self) -> int:
         """Calculate file age in days since last modification."""
         return (datetime.now() - self.modified_at).days
 
-    @computed_field
+    @computed_field  # type: ignore[misc]
     @property
     def size_mb(self) -> float:
         """File size in megabytes."""
@@ -105,21 +103,21 @@ class FileOperation(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now)
     operation_type: OperationType
     source_path: str
-    destination_path: Optional[str] = None
+    destination_path: str | None = None
     file_size: int = Field(ge=0)
     checksum: str
     rule_id: str
     dry_run: bool = False
     success: bool = False
-    error_message: Optional[str] = None
-    skip_reason: Optional[SkipReason] = None
-    duplicate_of: Optional[str] = None
+    error_message: str | None = None
+    skip_reason: SkipReason | None = None
+    duplicate_of: str | None = None
 
     @field_validator("destination_path")
     @classmethod
     def validate_destination(
-        cls, v: Optional[str], info
-    ) -> Optional[str]:
+        cls, v: str | None, info
+    ) -> str | None:
         """Ensure destination is set for move operations."""
         if info.data.get("operation_type") == OperationType.MOVE and v is None:
             raise ValueError("destination_path required for move operations")
@@ -142,13 +140,13 @@ class ScanResult(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now)
     total_files_scanned: int = Field(ge=0)
     files_matched: int = Field(ge=0)
-    planned_operations: List[FileOperation] = Field(default_factory=list)
-    duplicate_pairs: List[DuplicatePair] = Field(default_factory=list)
-    large_files: List[FileMetadata] = Field(default_factory=list)
-    old_files: List[FileMetadata] = Field(default_factory=list)
+    planned_operations: list[FileOperation] = Field(default_factory=list)
+    duplicate_pairs: list[DuplicatePair] = Field(default_factory=list)
+    large_files: list[FileMetadata] = Field(default_factory=list)
+    old_files: list[FileMetadata] = Field(default_factory=list)
     scan_duration_ms: int = Field(ge=0)
 
-    @computed_field
+    @computed_field  # type: ignore[misc]
     @property
     def estimated_space_freed_mb(self) -> float:
         """Estimate space to be freed by duplicate deletion."""
@@ -171,7 +169,7 @@ class PathSettings(BaseModel):
 
     screenshot_source: str
     screenshot_destination: str
-    monitored_directories: List[str] = Field(default_factory=list)
+    monitored_directories: list[str] = Field(default_factory=list)
 
 
 class ThresholdSettings(BaseModel):
@@ -195,7 +193,7 @@ class Configuration(BaseModel):
     paths: PathSettings
     thresholds: ThresholdSettings = Field(default_factory=ThresholdSettings)
     duplicate_handling: DuplicateHandling = Field(default_factory=DuplicateHandling)
-    rules: List[Rule] = Field(default_factory=list)
+    rules: list[Rule] = Field(default_factory=list)
 
 
 class ChecksumCacheEntry(BaseModel):
