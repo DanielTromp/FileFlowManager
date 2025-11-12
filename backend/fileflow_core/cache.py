@@ -5,6 +5,8 @@ Provides in-memory caching, connection pooling, and cache invalidation
 strategies for frequently accessed data.
 """
 
+from __future__ import annotations
+
 import functools
 import hashlib
 import logging
@@ -342,7 +344,7 @@ class QueryCache:
         cache_key = self._make_key(query, params)
         return self._cache.get(cache_key)
 
-    def set(self, query: str, params: tuple[Any, ...], result: Any) -> None:
+    def cache_query(self, query: str, params: tuple[Any, ...], result: Any) -> None:
         """
         Cache query result.
 
