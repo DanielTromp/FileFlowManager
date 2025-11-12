@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { getAllOperationsProgress, cancelOperation } from "$lib/api";
-  import type { AllOperationsProgress, OperationProgress, OperationProgressStatus } from "$lib/types";
+  import type { AllOperationsProgress, OperationProgressStatus } from "$lib/types";
 
   let operationsProgress: AllOperationsProgress | null = null;
   let loading = true;
