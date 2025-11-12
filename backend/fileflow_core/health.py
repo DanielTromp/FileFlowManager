@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fileflow_core.observability import MetricsCollector, get_metrics
 
@@ -34,8 +34,8 @@ class HealthCheckResult:
     status: HealthStatus
     message: str
     timestamp: datetime
-    details: Dict[str, Any]
-    latency_ms: Optional[float] = None
+    details: dict[str, Any]
+    latency_ms: float | None = None
 
 
 class HealthChecker:
@@ -49,7 +49,7 @@ class HealthChecker:
     - System resources
     """
 
-    def __init__(self, metrics: Optional[MetricsCollector] = None):
+    def __init__(self, metrics: MetricsCollector | None = None):
         """
         Initialize health checker.
 
@@ -307,11 +307,11 @@ class HealthChecker:
 
     def run_all_checks(
         self,
-        db_path: Optional[str] = None,
-        cache_hit_rate: Optional[float] = None,
-        fs_path: Optional[str] = None,
-        avg_operation_time: Optional[float] = None,
-    ) -> Dict[str, HealthCheckResult]:
+        db_path: str | None = None,
+        cache_hit_rate: float | None = None,
+        fs_path: str | None = None,
+        avg_operation_time: float | None = None,
+    ) -> dict[str, HealthCheckResult]:
         """
         Run all configured health checks.
 
@@ -340,7 +340,7 @@ class HealthChecker:
 
         return results
 
-    def get_overall_status(self, results: Dict[str, HealthCheckResult]) -> HealthStatus:
+    def get_overall_status(self, results: dict[str, HealthCheckResult]) -> HealthStatus:
         """
         Get overall health status from individual check results.
 
@@ -362,7 +362,7 @@ class HealthChecker:
         else:
             return HealthStatus.HEALTHY
 
-    def format_health_report(self, results: Dict[str, HealthCheckResult]) -> str:
+    def format_health_report(self, results: dict[str, HealthCheckResult]) -> str:
         """
         Format health check results as a readable report.
 
@@ -380,7 +380,7 @@ class HealthChecker:
         lines.append("=" * 80)
         lines.append("")
 
-        for name, result in results.items():
+        for _name, result in results.items():
             status_symbol = {
                 HealthStatus.HEALTHY: "✓",
                 HealthStatus.DEGRADED: "⚠",

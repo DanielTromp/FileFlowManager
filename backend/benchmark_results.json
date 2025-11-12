@@ -1,0 +1,134 @@
+{
+  "database_operations": {
+    "baseline": {
+      "name": "single-connection",
+      "iterations": 50,
+      "total_time": 0.0351,
+      "mean_time": 0.0007,
+      "median_time": 0.0007,
+      "stddev": 0.0,
+      "min_time": 0.0007,
+      "max_time": 0.0009,
+      "ops_per_second": 1426.35,
+      "metadata": {}
+    },
+    "optimized": {
+      "name": "connection-pool",
+      "iterations": 50,
+      "total_time": 0.1197,
+      "mean_time": 0.0024,
+      "median_time": 0.0023,
+      "stddev": 0.0006,
+      "min_time": 0.0018,
+      "max_time": 0.006,
+      "ops_per_second": 417.84,
+      "metadata": {}
+    },
+    "speedup": 0.29,
+    "improvement_percent": 0.0,
+    "name": "Database Connection Overhead"
+  },
+  "lru_cache": {
+    "name": "LRU Cache Performance",
+    "baseline": {
+      "name": "without-cache",
+      "iterations": 100,
+      "total_time": 0.0567,
+      "mean_time": 0.0006,
+      "median_time": 0.0006,
+      "stddev": 0.0,
+      "min_time": 0.0005,
+      "max_time": 0.0006,
+      "ops_per_second": 1764.61,
+      "metadata": {
+        "approach": "direct dict access"
+      }
+    },
+    "optimized": {
+      "name": "with-lru-cache",
+      "iterations": 100,
+      "total_time": 0.2184,
+      "mean_time": 0.0022,
+      "median_time": 0.0022,
+      "stddev": 0.0,
+      "min_time": 0.0021,
+      "max_time": 0.0023,
+      "ops_per_second": 457.82,
+      "metadata": {
+        "approach": "LRU cache",
+        "capacity": 100
+      }
+    },
+    "speedup": 0.26,
+    "improvement_percent": 0.0,
+    "cache_stats": {
+      "size": 50,
+      "capacity": 100,
+      "hits": 5000,
+      "misses": 0,
+      "hit_rate": 100.0
+    }
+  },
+  "query_cache": {
+    "baseline": {
+      "name": "without-query-cache",
+      "iterations": 20,
+      "total_time": 0.1597,
+      "mean_time": 0.008,
+      "median_time": 0.008,
+      "stddev": 0.0001,
+      "min_time": 0.0078,
+      "max_time": 0.0083,
+      "ops_per_second": 125.21,
+      "metadata": {}
+    },
+    "optimized": {
+      "name": "with-query-cache",
+      "iterations": 20,
+      "total_time": 0.0133,
+      "mean_time": 0.0007,
+      "median_time": 0.0007,
+      "stddev": 0.0,
+      "min_time": 0.0007,
+      "max_time": 0.0007,
+      "ops_per_second": 1508.62,
+      "metadata": {}
+    },
+    "speedup": 12.05,
+    "improvement_percent": 1104.92,
+    "name": "Query Cache Performance",
+    "cache_stats": {
+      "size": 3,
+      "capacity": 500,
+      "hits": 3747,
+      "misses": 3,
+      "hit_rate": 99.92,
+      "tracked_tables": 0
+    }
+  },
+  "rule_engine_caching": {
+    "name": "Rule Engine Destination Caching",
+    "result": {
+      "name": "with-destination-cache",
+      "iterations": 20,
+      "total_time": 0.0127,
+      "mean_time": 0.0006,
+      "median_time": 0.0006,
+      "stddev": 0.0,
+      "min_time": 0.0006,
+      "max_time": 0.0007,
+      "ops_per_second": 1574.34,
+      "metadata": {
+        "files": 100,
+        "iterations_per_run": 10
+      }
+    },
+    "cache_stats": {
+      "size": 100,
+      "capacity": 1000,
+      "hits": 25900,
+      "misses": 100,
+      "hit_rate": 99.62
+    }
+  }
+}

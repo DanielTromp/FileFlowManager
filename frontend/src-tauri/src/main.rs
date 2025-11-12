@@ -217,6 +217,77 @@ async fn cancel_operation(operation_id: String) -> Result<serde_json::Value, Str
         .map_err(|e| format!("Failed to parse response: {} - Output: {}", e, stdout))
 }
 
+/// Get system metrics
+#[tauri::command]
+async fn get_system_metrics() -> Result<serde_json::Value, String> {
+    let args = serde_json::json!({});
+
+    let stdout = backend::execute_backend_command("get_system_metrics", &args)?;
+
+    serde_json::from_str(&stdout)
+        .map_err(|e| format!("Failed to parse response: {} - Output: {}", e, stdout))
+}
+
+/// Get system health status
+#[tauri::command]
+async fn get_health_status() -> Result<serde_json::Value, String> {
+    let args = serde_json::json!({});
+
+    let stdout = backend::execute_backend_command("get_health_status", &args)?;
+
+    serde_json::from_str(&stdout)
+        .map_err(|e| format!("Failed to parse response: {} - Output: {}", e, stdout))
+}
+
+/// Get cache statistics
+#[tauri::command]
+async fn get_cache_statistics() -> Result<serde_json::Value, String> {
+    let args = serde_json::json!({});
+
+    let stdout = backend::execute_backend_command("get_cache_statistics", &args)?;
+
+    serde_json::from_str(&stdout)
+        .map_err(|e| format!("Failed to parse response: {} - Output: {}", e, stdout))
+}
+
+/// Export metrics in specified format
+#[tauri::command]
+async fn export_metrics(format: Option<String>, include_health: Option<bool>) -> Result<serde_json::Value, String> {
+    let args = serde_json::json!({
+        "format": format.unwrap_or_else(|| "json".to_string()),
+        "include_health": include_health.unwrap_or(true)
+    });
+
+    let stdout = backend::execute_backend_command("export_metrics", &args)?;
+
+    serde_json::from_str(&stdout)
+        .map_err(|e| format!("Failed to parse response: {} - Output: {}", e, stdout))
+}
+
+/// Get progress for a specific operation
+#[tauri::command]
+async fn get_operation_progress(operation_id: String) -> Result<serde_json::Value, String> {
+    let args = serde_json::json!({
+        "operation_id": operation_id
+    });
+
+    let stdout = backend::execute_backend_command("get_operation_progress", &args)?;
+
+    serde_json::from_str(&stdout)
+        .map_err(|e| format!("Failed to parse response: {} - Output: {}", e, stdout))
+}
+
+/// Get progress for all operations
+#[tauri::command]
+async fn get_all_operations_progress() -> Result<serde_json::Value, String> {
+    let args = serde_json::json!({});
+
+    let stdout = backend::execute_backend_command("get_all_operations_progress", &args)?;
+
+    serde_json::from_str(&stdout)
+        .map_err(|e| format!("Failed to parse response: {} - Output: {}", e, stdout))
+}
+
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
@@ -233,7 +304,13 @@ fn main() {
             delete_files,
             get_configuration,
             export_configuration,
-            import_configuration
+            import_configuration,
+            get_system_metrics,
+            get_health_status,
+            get_cache_statistics,
+            export_metrics,
+            get_operation_progress,
+            get_all_operations_progress
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

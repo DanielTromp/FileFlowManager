@@ -11,8 +11,6 @@ import threading
 import time
 from pathlib import Path
 
-import pytest
-
 from fileflow_core.cache import (
     ConnectionPool,
     LRUCache,
@@ -370,13 +368,13 @@ class TestCachedDecorator:
             call_count[0] += 1
             return x * 2
 
-        result1 = func(5)
+        func(5)
         assert call_count[0] == 1
 
         # Invalidate
         func.invalidate(5)
 
-        result2 = func(5)
+        func(5)
         assert call_count[0] == 2  # Called again
 
     def test_decorator_clear_cache(self):

@@ -848,6 +848,10 @@ def find_old(
         int,
         typer.Option("--threshold", "-t", help="Age threshold in days")
     ] = 90,
+    delete: Annotated[
+        bool,
+        typer.Option("--delete", "-d", help="Interactively delete found files")
+    ] = False,
 ) -> None:
     """
     Find files older than specified threshold (default: 90 days).
@@ -861,10 +865,19 @@ def find_old(
 
         # Output as JSON
         fileflow find-old --output json
+
+        # Interactively delete old files
+        fileflow find-old --delete
     """
     from pathlib import Path
 
     from fileflow_core.file_scanner import FileScanner
+
+    # Validate flag combinations
+    if delete and output_format == "json":
+        out = OutputFormat()
+        out.print("[red]Error: --delete cannot be used with --output json (interactive mode only)[/red]")
+        sys.exit(ExitCode.GENERAL_ERROR)
 
     out = OutputFormat()
 
@@ -962,6 +975,47 @@ def find_old(
         out.print(f"[dim]Showing first 20 of {len(old_files)} files[/dim]\n")
     else:
         out.print()
+
+    # Interactive deletion mode
+    if delete:
+        out.print(f"\n[yellow]⚠️  You are about to delete {len(old_files)} files ({total_size_mb:.2f} MB)[/yellow]")
+        out.print("[yellow]This action cannot be undone![/yellow]\n")
+
+        try:
+            confirm = typer.confirm("Are you sure you want to delete these files?")
+            if not confirm:
+                out.print("[green]Operation cancelled.[/green]")
+                sys.exit(ExitCode.SUCCESS)
+
+            # Delete files
+            from fileflow_core.file_operations import FileOperations
+
+            out.print("\n[bold]Deleting files...[/bold]")
+            file_paths = [Path(f.path) for f in old_files]
+            result = FileOperations.delete_files_batch(file_paths, confirm=False)
+
+            # Show results
+            deleted_count = result["deleted_count"]
+            failed_count = result["failed_count"]
+            deleted_size_mb = result["total_size_deleted"] / (1024 * 1024)
+
+            if deleted_count > 0:
+                out.print(f"\n[green]✓ Successfully deleted {deleted_count} files ({deleted_size_mb:.2f} MB)[/green]")
+
+            if failed_count > 0:
+                out.print(f"[red]✗ Failed to delete {failed_count} files[/red]")
+                if result.get("errors"):
+                    out.print("\n[red]Errors:[/red]")
+                    for error in result["errors"][:10]:  # Show first 10 errors
+                        out.print(f"  • {error}")
+                    if len(result["errors"]) > 10:
+                        out.print(f"  ... and {len(result['errors']) - 10} more errors")
+
+            sys.exit(ExitCode.SUCCESS if failed_count == 0 else ExitCode.GENERAL_ERROR)
+
+        except typer.Abort:
+            out.print("\n[green]Operation cancelled.[/green]")
+            sys.exit(ExitCode.SUCCESS)
 
     sys.exit(ExitCode.SUCCESS)
 

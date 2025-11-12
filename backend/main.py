@@ -16,11 +16,17 @@ from fileflow_api.tauri_commands import (
     detect_screenshot_location,
     execute_operations,
     export_configuration,
+    export_metrics,
+    get_all_operations_progress,
+    get_cache_statistics,
     get_configuration,
+    get_health_status,
     get_large_files,
     get_old_files,
     get_operation_history,
+    get_operation_progress,
     get_rules,
+    get_system_metrics,
     import_configuration,
     scan_files,
     toggle_rule,
@@ -70,6 +76,18 @@ if __name__ == "__main__":
                 result = export_configuration(**args)
             elif command == "import_configuration":
                 result = import_configuration(**args)
+            elif command == "get_system_metrics":
+                result = get_system_metrics()
+            elif command == "get_health_status":
+                result = get_health_status()
+            elif command == "get_cache_statistics":
+                result = get_cache_statistics()
+            elif command == "export_metrics":
+                result = export_metrics(**args)
+            elif command == "get_operation_progress":
+                result = get_operation_progress(**args)
+            elif command == "get_all_operations_progress":
+                result = get_all_operations_progress()
             else:
                 result = {"error": f"Unknown command: {command}"}
 

@@ -6,7 +6,6 @@ and pre-configured retry decorators.
 """
 
 import time
-from typing import List
 
 import pytest
 
@@ -106,7 +105,6 @@ class TestRetryConfig:
         )
 
         # With jitter, delay should be within ±25% of expected value
-        expected_delay = 10.0  # 10.0 * (2^0)
         delay = config.get_delay(0)
 
         # Should be between 7.5 and 12.5
@@ -300,7 +298,7 @@ class TestRetryTiming:
 
     def test_exponential_backoff_timing(self):
         """Test that delays follow exponential backoff."""
-        call_times: List[float] = []
+        call_times: list[float] = []
 
         config = RetryConfig(
             max_attempts=4,

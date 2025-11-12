@@ -13,6 +13,7 @@
     { id: "rules", name: "Rules", icon: "⚙️" },
     { id: "large-files", name: "Large Files", icon: "📦" },
     { id: "old-files", name: "Old Files", icon: "🕒" },
+    { id: "monitoring", name: "Monitoring", icon: "📈" },
     { id: "settings", name: "Settings", icon: "⚙️" },
   ];
 

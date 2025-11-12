@@ -165,7 +165,7 @@ def benchmark_checksum_caching():
         result["cache_stats"] = cache_stats
 
         print(format_benchmark_report(result))
-        print(f"\nCache Statistics:")
+        print("\nCache Statistics:")
         print(f"  Files cached:  {cache_stats['total_entries']}")
         print(f"  Expected hits: {cache_stats['expected_hits']}")
         print(f"  Hit rate:      {cache_stats['hit_rate']}")
@@ -246,7 +246,7 @@ def run_all_file_benchmarks():
     print("")
     print("Progress Tracking Overhead:")
     print(f"  Speedup: {results['basic_scanning']['speedup']}x")
-    print(f"  (Lower is expected - progress tracking adds minimal overhead)")
+    print("  (Lower is expected - progress tracking adds minimal overhead)")
     print("")
     print("Checksum Caching Performance:")
     print(f"  Speedup: {results['checksum_caching']['speedup']}x")

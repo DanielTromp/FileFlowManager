@@ -170,7 +170,7 @@ def benchmark_lru_cache():
     }
 
     print(format_benchmark_report(result))
-    print(f"\nCache Statistics:")
+    print("\nCache Statistics:")
     print(f"  Hit rate: {stats['hit_rate']}%")
     print(f"  Hits:     {stats['hits']}")
     print(f"  Misses:   {stats['misses']}")
@@ -248,7 +248,7 @@ def benchmark_query_cache():
         result["cache_stats"] = cache.get_stats()
 
         print(format_benchmark_report(result))
-        print(f"\nQuery Cache Statistics:")
+        print("\nQuery Cache Statistics:")
         print(f"  Hit rate: {cache.get_stats()['hit_rate']}%")
 
         pool.close_all()
@@ -296,8 +296,9 @@ def benchmark_rule_engine_caching():
         bench = Benchmark("rule-engine-destination-cache")
 
         # Create dummy file metadata
-        from fileflow_core.models import FileMetadata
         from datetime import datetime
+
+        from fileflow_core.models import FileMetadata
 
         files = [
             FileMetadata(
@@ -325,7 +326,7 @@ def benchmark_rule_engine_caching():
         calculate_destinations_with_cache()
 
         # Get cache stats before benchmark
-        cache_stats_before = engine_with_cache._destination_cache.get_stats()
+        engine_with_cache._destination_cache.get_stats()
 
         # Benchmark with warm cache
         result = bench.run(
@@ -339,7 +340,7 @@ def benchmark_rule_engine_caching():
         cache_stats_after = engine_with_cache._destination_cache.get_stats()
 
         print(format_benchmark_report(bench.get_summary()))
-        print(f"\nDestination Cache Statistics:")
+        print("\nDestination Cache Statistics:")
         print(f"  Capacity:  {cache_stats_after['capacity']}")
         print(f"  Size:      {cache_stats_after['size']}")
         print(f"  Hit rate:  {cache_stats_after['hit_rate']}%")

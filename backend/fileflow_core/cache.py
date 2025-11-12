@@ -391,7 +391,7 @@ class QueryCache:
         import re
 
         query_lower = query.lower()
-        tables: Set[str] = set()
+        tables: set[str] = set()
 
         # Find FROM clauses
         from_pattern = r"from\s+([a-z_][a-z0-9_]*)"

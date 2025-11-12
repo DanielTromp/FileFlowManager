@@ -7,8 +7,6 @@ Tests database health, cache health, and system status monitoring.
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from fileflow_core.health import HealthChecker, HealthStatus
 
 

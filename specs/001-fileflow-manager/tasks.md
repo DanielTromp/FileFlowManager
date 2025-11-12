@@ -250,7 +250,7 @@ This is a **web application architecture** project:
 ### CLI Implementation for User Story 4
 
 - [x] T103 [US4] Implement `fileflow find-old` command in backend/fileflow_cli/commands.py (90 day threshold) ✅
-- [ ] T104 [US4] Add interactive deletion mode for old files in backend/fileflow_cli/commands.py (--delete flag)
+- [x] T104 [US4] Add interactive deletion mode for old files in backend/fileflow_cli/commands.py (--delete flag) ✅
 - [x] T105 [P] [US4] Add age and size summary in backend/fileflow_cli/commands.py ✅
 
 ### GUI Implementation for User Story 4
@@ -338,8 +338,8 @@ This is a **web application architecture** project:
 
 - [X] T141 [P] Add checksum caching optimization in backend/fileflow_storage/cache.py (avoid recalculation)
 - [X] T142 [P] Opti/mize parallel scanning in backend/fileflow_core/file_scanner.py (ThreadPoolExecutor tuning)
-- [ ] T143 [P] Add operation cancellation support in backend/fileflow_api/tauri_commands.py (cancel_operation command)
-- [ ] T144 [P] Implement progress events for all long operations in backend/fileflow_api/tauri_commands.py (>5 seconds)
+- [X] T143 [P] Add operation cancellation support in backend/fileflow_api/tauri_commands.py (cancel_operation command)
+- [X] T144 [P] Implement progress events for all long operations in backend/fileflow_api/tauri_commands.py (>5 seconds)
 
 ### System Integration
 

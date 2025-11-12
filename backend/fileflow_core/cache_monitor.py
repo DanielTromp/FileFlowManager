@@ -9,9 +9,13 @@ Provides monitoring for:
 """
 
 from dataclasses import dataclass
-from typing import Dict, Optional
 
-from fileflow_core.observability import MetricsCollector, StructuredLogger, get_logger, get_metrics
+from fileflow_core.observability import (
+    MetricsCollector,
+    StructuredLogger,
+    get_logger,
+    get_metrics,
+)
 
 
 @dataclass
@@ -40,8 +44,8 @@ class CacheMonitor:
 
     def __init__(
         self,
-        metrics: Optional[MetricsCollector] = None,
-        logger: Optional[StructuredLogger] = None,
+        metrics: MetricsCollector | None = None,
+        logger: StructuredLogger | None = None,
     ):
         """
         Initialize cache monitor.
@@ -54,7 +58,7 @@ class CacheMonitor:
         self.logger = logger or get_logger(__name__)
 
     def record_cache_access(
-        self, cache_name: str, hit: bool, operation: Optional[str] = None
+        self, cache_name: str, hit: bool, operation: str | None = None
     ) -> None:
         """
         Record a cache access (hit or miss).
@@ -101,7 +105,7 @@ class CacheMonitor:
             labels={"cache": cache_name},
         )
 
-    def get_cache_stats(self, cache_name: str) -> Optional[CacheStats]:
+    def get_cache_stats(self, cache_name: str) -> CacheStats | None:
         """
         Get statistics for a specific cache.
 
@@ -135,7 +139,7 @@ class CacheMonitor:
             evictions=evictions,
         )
 
-    def get_all_cache_stats(self) -> Dict[str, CacheStats]:
+    def get_all_cache_stats(self) -> dict[str, CacheStats]:
         """
         Get statistics for all monitored caches.
 
@@ -194,7 +198,7 @@ class CacheMonitor:
                 capacity=stats.capacity,
             )
 
-    def format_cache_report(self, stats: Optional[Dict[str, CacheStats]] = None) -> str:
+    def format_cache_report(self, stats: dict[str, CacheStats] | None = None) -> str:
         """
         Format cache statistics as a readable report.
 
@@ -238,7 +242,7 @@ class CacheMonitor:
 # Convenience functions for common cache types
 
 
-def monitor_lru_cache(cache_name: str, monitor: Optional[CacheMonitor] = None):
+def monitor_lru_cache(cache_name: str, monitor: CacheMonitor | None = None):
     """
     Decorator to monitor LRU cache operations.
 
@@ -267,7 +271,7 @@ def monitor_lru_cache(cache_name: str, monitor: Optional[CacheMonitor] = None):
 
 
 def track_cache_operation(
-    cache_name: str, operation: str, monitor: Optional[CacheMonitor] = None
+    cache_name: str, operation: str, monitor: CacheMonitor | None = None
 ):
     """
     Decorator to track cache operations with detailed context.

@@ -5,7 +5,6 @@ Tests the comprehensive error handling infrastructure including
 custom exceptions, error formatting, and user-friendly messages.
 """
 
-import pytest
 
 from fileflow_core.errors import (
     ConfigurationError,

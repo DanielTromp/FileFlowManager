@@ -9,15 +9,12 @@ Demonstrates how to:
 """
 
 import time
-from pathlib import Path
 
 from fileflow_core.cache import LRUCache
 from fileflow_core.cache_monitor import CacheMonitor
 from fileflow_core.health import HealthChecker
 from fileflow_core.metrics_export import MetricsExporter
 from fileflow_core.observability import (
-    MetricsCollector,
-    StructuredLogger,
     get_logger,
     get_metrics,
     monitored,
@@ -221,7 +218,7 @@ def example_complete_workflow():
     metrics = get_metrics()
     logger = get_logger(__name__)
     monitor = CacheMonitor()
-    exporter = MetricsExporter()
+    MetricsExporter()
 
     # Simulated operation
     logger.info("Starting batch file processing", batch_size=50)
@@ -260,7 +257,7 @@ def example_complete_workflow():
     # Cache statistics
     cache_stats = monitor.get_cache_stats("file_metadata_cache")
     if cache_stats:
-        print(f"\nCache Performance:")
+        print("\nCache Performance:")
         print(f"  Hit Rate:         {cache_stats.hit_rate:.2%}")
         print(f"  Hits/Misses:      {cache_stats.hits} / {cache_stats.misses}")
 

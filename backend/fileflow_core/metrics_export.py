@@ -12,7 +12,7 @@ import json
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fileflow_core.cache_monitor import CacheMonitor, CacheStats
 from fileflow_core.health import HealthChecker, HealthCheckResult, HealthStatus
@@ -24,12 +24,12 @@ class MetricsSnapshot:
     """Complete metrics snapshot at a point in time."""
 
     timestamp: datetime
-    counters: Dict[str, float]
-    gauges: Dict[str, float]
-    histograms: Dict[str, Dict[str, Any]]
-    timers: Dict[str, Dict[str, Any]]
-    cache_stats: Dict[str, CacheStats]
-    health_checks: Optional[Dict[str, HealthCheckResult]] = None
+    counters: dict[str, float]
+    gauges: dict[str, float]
+    histograms: dict[str, dict[str, Any]]
+    timers: dict[str, dict[str, Any]]
+    cache_stats: dict[str, CacheStats]
+    health_checks: dict[str, HealthCheckResult] | None = None
 
 
 class MetricsExporter:
@@ -44,9 +44,9 @@ class MetricsExporter:
 
     def __init__(
         self,
-        metrics: Optional[MetricsCollector] = None,
-        cache_monitor: Optional[CacheMonitor] = None,
-        health_checker: Optional[HealthChecker] = None,
+        metrics: MetricsCollector | None = None,
+        cache_monitor: CacheMonitor | None = None,
+        health_checker: HealthChecker | None = None,
     ):
         """
         Initialize metrics exporter.
@@ -91,7 +91,7 @@ class MetricsExporter:
         )
 
     def export_json(
-        self, snapshot: Optional[MetricsSnapshot] = None, pretty: bool = True
+        self, snapshot: MetricsSnapshot | None = None, pretty: bool = True
     ) -> str:
         """
         Export metrics as JSON.
@@ -132,7 +132,7 @@ class MetricsExporter:
             return json.dumps(data, indent=2, default=str)
         return json.dumps(data, default=str)
 
-    def export_prometheus(self, snapshot: Optional[MetricsSnapshot] = None) -> str:
+    def export_prometheus(self, snapshot: MetricsSnapshot | None = None) -> str:
         """
         Export metrics in Prometheus text format.
 
@@ -204,7 +204,7 @@ class MetricsExporter:
 
         return "\n".join(lines)
 
-    def export_report(self, snapshot: Optional[MetricsSnapshot] = None) -> str:
+    def export_report(self, snapshot: MetricsSnapshot | None = None) -> str:
         """
         Export metrics as human-readable report.
 
@@ -285,7 +285,7 @@ class MetricsExporter:
         return "\n".join(lines)
 
     def save_snapshot(
-        self, path: Path, snapshot: Optional[MetricsSnapshot] = None, format: str = "json"
+        self, path: Path, snapshot: MetricsSnapshot | None = None, format: str = "json"
     ) -> None:
         """
         Save metrics snapshot to file.
@@ -309,7 +309,7 @@ class MetricsExporter:
 
         path.write_text(content)
 
-    def get_summary_stats(self, snapshot: Optional[MetricsSnapshot] = None) -> Dict[str, Any]:
+    def get_summary_stats(self, snapshot: MetricsSnapshot | None = None) -> dict[str, Any]:
         """
         Get summary statistics.
 

@@ -8,12 +8,13 @@ to track the effectiveness of infrastructure optimizations.
 import logging
 import time
 from collections import defaultdict
+from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from threading import Lock
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 
 class MetricType(Enum):
@@ -33,8 +34,8 @@ class MetricValue:
     value: float
     metric_type: MetricType
     timestamp: datetime
-    labels: Dict[str, str] = field(default_factory=dict)
-    unit: Optional[str] = None
+    labels: dict[str, str] = field(default_factory=dict)
+    unit: str | None = None
 
 
 @dataclass
@@ -65,14 +66,14 @@ class MetricsCollector:
     def __init__(self):
         """Initialize metrics collector."""
         self._lock = Lock()
-        self._counters: Dict[str, float] = defaultdict(float)
-        self._gauges: Dict[str, float] = {}
-        self._histograms: Dict[str, List[float]] = defaultdict(list)
-        self._timers: Dict[str, List[float]] = defaultdict(list)
-        self._labels: Dict[str, Dict[str, str]] = {}
+        self._counters: dict[str, float] = defaultdict(float)
+        self._gauges: dict[str, float] = {}
+        self._histograms: dict[str, list[float]] = defaultdict(list)
+        self._timers: dict[str, list[float]] = defaultdict(list)
+        self._labels: dict[str, dict[str, str]] = {}
 
     def increment(
-        self, name: str, value: float = 1.0, labels: Optional[Dict[str, str]] = None
+        self, name: str, value: float = 1.0, labels: dict[str, str] | None = None
     ) -> None:
         """
         Increment a counter metric.
@@ -89,7 +90,7 @@ class MetricsCollector:
                 self._labels[key] = labels
 
     def set_gauge(
-        self, name: str, value: float, labels: Optional[Dict[str, str]] = None
+        self, name: str, value: float, labels: dict[str, str] | None = None
     ) -> None:
         """
         Set a gauge metric to a specific value.
@@ -106,7 +107,7 @@ class MetricsCollector:
                 self._labels[key] = labels
 
     def observe(
-        self, name: str, value: float, labels: Optional[Dict[str, str]] = None
+        self, name: str, value: float, labels: dict[str, str] | None = None
     ) -> None:
         """
         Record a histogram observation.
@@ -123,7 +124,7 @@ class MetricsCollector:
                 self._labels[key] = labels
 
     def record_time(
-        self, name: str, duration: float, labels: Optional[Dict[str, str]] = None
+        self, name: str, duration: float, labels: dict[str, str] | None = None
     ) -> None:
         """
         Record a timer duration.
@@ -140,7 +141,7 @@ class MetricsCollector:
                 self._labels[key] = labels
 
     @contextmanager
-    def time(self, name: str, labels: Optional[Dict[str, str]] = None):
+    def time(self, name: str, labels: dict[str, str] | None = None):
         """
         Context manager to time a code block.
 
@@ -159,21 +160,21 @@ class MetricsCollector:
             duration = time.perf_counter() - start
             self.record_time(name, duration, labels)
 
-    def get_counter(self, name: str, labels: Optional[Dict[str, str]] = None) -> float:
+    def get_counter(self, name: str, labels: dict[str, str] | None = None) -> float:
         """Get current counter value."""
         with self._lock:
             key = self._make_key(name, labels)
             return self._counters.get(key, 0.0)
 
-    def get_gauge(self, name: str, labels: Optional[Dict[str, str]] = None) -> Optional[float]:
+    def get_gauge(self, name: str, labels: dict[str, str] | None = None) -> float | None:
         """Get current gauge value."""
         with self._lock:
             key = self._make_key(name, labels)
             return self._gauges.get(key)
 
     def get_histogram_stats(
-        self, name: str, labels: Optional[Dict[str, str]] = None
-    ) -> Optional[HistogramStats]:
+        self, name: str, labels: dict[str, str] | None = None
+    ) -> HistogramStats | None:
         """Get histogram statistics."""
         with self._lock:
             key = self._make_key(name, labels)
@@ -197,8 +198,8 @@ class MetricsCollector:
             )
 
     def get_timer_stats(
-        self, name: str, labels: Optional[Dict[str, str]] = None
-    ) -> Optional[HistogramStats]:
+        self, name: str, labels: dict[str, str] | None = None
+    ) -> HistogramStats | None:
         """Get timer statistics."""
         with self._lock:
             key = self._make_key(name, labels)
@@ -221,7 +222,7 @@ class MetricsCollector:
                 p99=self._percentile(sorted_values, 0.99),
             )
 
-    def get_all_metrics(self) -> Dict[str, Any]:
+    def get_all_metrics(self) -> dict[str, Any]:
         """Get all collected metrics."""
         with self._lock:
             return {
@@ -247,7 +248,7 @@ class MetricsCollector:
             self._labels.clear()
 
     @staticmethod
-    def _make_key(name: str, labels: Optional[Dict[str, str]]) -> str:
+    def _make_key(name: str, labels: dict[str, str] | None) -> str:
         """Create a unique key from name and labels."""
         if not labels:
             return name
@@ -255,7 +256,7 @@ class MetricsCollector:
         return f"{name}{{{label_str}}}"
 
     @staticmethod
-    def _percentile(sorted_values: List[float], p: float) -> float:
+    def _percentile(sorted_values: list[float], p: float) -> float:
         """Calculate percentile from sorted values."""
         if not sorted_values:
             return 0.0
@@ -269,7 +270,7 @@ class MetricsCollector:
         return d0 + d1
 
     @staticmethod
-    def _histogram_to_dict(values: List[float]) -> Dict[str, Any]:
+    def _histogram_to_dict(values: list[float]) -> dict[str, Any]:
         """Convert histogram values to statistics dict."""
         if not values:
             return {"count": 0}
@@ -301,7 +302,7 @@ class StructuredLogger:
     - Error tracking
     """
 
-    def __init__(self, name: str, metrics: Optional[MetricsCollector] = None):
+    def __init__(self, name: str, metrics: MetricsCollector | None = None):
         """
         Initialize structured logger.
 
@@ -327,7 +328,7 @@ class StructuredLogger:
         if self.metrics:
             self.metrics.increment("log_warnings_total", labels={"logger": self.name})
 
-    def error(self, message: str, error: Optional[Exception] = None, **context) -> None:
+    def error(self, message: str, error: Exception | None = None, **context) -> None:
         """Log error message with context and optional exception."""
         if error:
             context["error_type"] = type(error).__name__
@@ -339,7 +340,7 @@ class StructuredLogger:
                 labels={"logger": self.name, "error_type": context.get("error_type", "unknown")},
             )
 
-    def _log(self, level: int, message: str, context: Dict[str, Any]) -> None:
+    def _log(self, level: int, message: str, context: dict[str, Any]) -> None:
         """Internal logging with structured context."""
         # Add timestamp
         context["timestamp"] = datetime.now().isoformat()

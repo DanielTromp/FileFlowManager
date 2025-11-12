@@ -5,7 +5,6 @@ Tests the interaction between error handling, retry logic, progress tracking,
 and caching in realistic scenarios.
 """
 
-import sqlite3
 import tempfile
 import threading
 import time
@@ -15,7 +14,6 @@ import pytest
 
 from fileflow_core.cache import ConnectionPool, LRUCache, QueryCache
 from fileflow_core.errors import (
-    DatabaseError,
     OperationCancelledError,
     RetryableError,
 )

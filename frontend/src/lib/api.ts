@@ -6,13 +6,19 @@
 
 import { invoke } from "@tauri-apps/api";
 import type {
-  ScanResult,
-  Rule,
-  FileMetadata,
+  AllOperationsProgress,
+  CacheStatistics,
   Configuration,
-  ScanFilesRequest,
-  ExecuteOperationsRequest,
   CreateRuleRequest,
+  ExecuteOperationsRequest,
+  FileMetadata,
+  MetricsExport,
+  OperationProgress,
+  Rule,
+  ScanFilesRequest,
+  ScanResult,
+  SystemHealthStatus,
+  SystemMetrics,
   UpdateRuleRequest,
 } from "./types";
 
@@ -201,4 +207,54 @@ export async function clearCache(
     clearChecksums,
     clearHistory,
   });
+}
+
+/**
+ * Get system metrics (counters, gauges, histograms, timers)
+ */
+export async function getSystemMetrics(): Promise<SystemMetrics> {
+  return await invoke<SystemMetrics>("get_system_metrics");
+}
+
+/**
+ * Get system health status
+ */
+export async function getHealthStatus(): Promise<SystemHealthStatus> {
+  return await invoke<SystemHealthStatus>("get_health_status");
+}
+
+/**
+ * Get cache performance statistics
+ */
+export async function getCacheStatistics(): Promise<CacheStatistics> {
+  return await invoke<CacheStatistics>("get_cache_statistics");
+}
+
+/**
+ * Export metrics in specified format
+ */
+export async function exportMetrics(
+  format: "json" | "prometheus" | "report" = "json",
+  includeHealth: boolean = true
+): Promise<MetricsExport> {
+  return await invoke<MetricsExport>("export_metrics", {
+    format,
+    includeHealth,
+  });
+}
+
+/**
+ * Get progress for a specific operation
+ */
+export async function getOperationProgress(operationId: string): Promise<OperationProgress> {
+  return await invoke<OperationProgress>("get_operation_progress", {
+    operationId,
+  });
+}
+
+/**
+ * Get progress for all operations
+ */
+export async function getAllOperationsProgress(): Promise<AllOperationsProgress> {
+  return await invoke<AllOperationsProgress>("get_all_operations_progress");
 }

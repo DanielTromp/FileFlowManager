@@ -5,6 +5,7 @@
   import Rules from "./routes/Rules.svelte";
   import LargeFiles from "./routes/LargeFiles.svelte";
   import OldFiles from "./routes/OldFiles.svelte";
+  import Monitoring from "./routes/Monitoring.svelte";
   import Settings from "./routes/Settings.svelte";
 
   // Create a store for the current route
@@ -20,6 +21,8 @@
     <LargeFiles />
   {:else if $currentRoute === "old-files"}
     <OldFiles />
+  {:else if $currentRoute === "monitoring"}
+    <Monitoring />
   {:else if $currentRoute === "settings"}
     <Settings />
   {:else}

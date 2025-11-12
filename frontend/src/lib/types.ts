@@ -151,3 +151,106 @@ export interface ProgressEvent {
   total_files: number;
   estimated_time_remaining_ms: number;
 }
+
+// Observability and Monitoring Types
+
+export type HealthStatus = "healthy" | "degraded" | "unhealthy";
+
+export interface HealthCheckResult {
+  status: HealthStatus;
+  message: string;
+  latency_ms: number;
+  details?: Record<string, any>;
+}
+
+export interface SystemHealthStatus {
+  overall_status: HealthStatus;
+  checks: Record<string, HealthCheckResult>;
+  timestamp: number;
+}
+
+export interface CacheStats {
+  hits: number;
+  misses: number;
+  hit_rate: number;
+  size: number;
+  capacity: number;
+  evictions: number;
+}
+
+export interface CacheStatistics {
+  caches: Record<string, CacheStats>;
+  timestamp: number;
+}
+
+export interface MetricValue {
+  value: number;
+  labels?: Record<string, string>;
+}
+
+export interface HistogramStats {
+  count: number;
+  min: number;
+  max: number;
+  mean: number;
+  p50: number;
+  p95: number;
+  p99: number;
+}
+
+export interface TimerStats {
+  count: number;
+  min: number;
+  max: number;
+  mean: number;
+  p50: number;
+  p95: number;
+  p99: number;
+}
+
+export interface SystemMetrics {
+  counters: Record<string, number>;
+  gauges: Record<string, number>;
+  histograms: Record<string, HistogramStats>;
+  timers: Record<string, TimerStats>;
+}
+
+export interface MetricsExport {
+  format: "json" | "prometheus" | "report";
+  data: string;
+  summary: {
+    total_operations: number;
+    total_errors: number;
+    error_rate: number;
+    avg_cache_hit_rate: number;
+    num_caches: number;
+    overall_health: HealthStatus;
+  };
+  timestamp: string;
+}
+
+export type OperationProgressStatus =
+  | "pending"
+  | "running"
+  | "paused"
+  | "completed"
+  | "cancelled"
+  | "failed";
+
+export interface OperationProgress {
+  operation_id: string;
+  status: OperationProgressStatus;
+  total_items: number;
+  completed_items: number;
+  current_item?: string;
+  percentage: number;
+  elapsed_time: number;
+  estimated_remaining?: number;
+  items_per_second: number;
+  error_message?: string;
+}
+
+export interface AllOperationsProgress {
+  operations: Record<string, OperationProgress>;
+  timestamp: number;
+}
